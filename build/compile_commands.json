@@ -1,7 +1,0 @@
-[
-{
-  "directory": "C:/Users/gerku/source/repos/VulkanTutorial/build",
-  "command": "C:\\MinGW\\mingw64\\bin\\g++.exe  @CMakeFiles/MyProject.dir/includes_CXX.rsp -std=gnu++17 -o CMakeFiles\\MyProject.dir\\src\\main.cpp.obj -c C:\\Users\\gerku\\source\\repos\\VulkanTutorial\\src\\main.cpp",
-  "file": "C:/Users/gerku/source/repos/VulkanTutorial/src/main.cpp"
-}
-]
