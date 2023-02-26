@@ -1,0 +1,4 @@
+C:/Users/gerku/source/repos/VulkanTutorial/build/CMakeFiles/MyProject.dir
+C:/Users/gerku/source/repos/VulkanTutorial/build/CMakeFiles/Shaders.dir
+C:/Users/gerku/source/repos/VulkanTutorial/build/CMakeFiles/edit_cache.dir
+C:/Users/gerku/source/repos/VulkanTutorial/build/CMakeFiles/rebuild_cache.dir
