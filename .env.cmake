@@ -1,4 +1,5 @@
-set(GLFW_PATH "C:/Users/gerku/Documents/LIDL programs/glfw-3.3.4")
+# set(GLFW_PATH "C:/Users/gerku/Documents/LIDL programs/glfw-3.3.8")
+set(GLFW_PATH "C:/GLFW")
 set(GLM_PATH "C:/Users/gerku/Documents/LIDL programs/glm")
 set(VULKAN_SDK_PATH  C:/VulkanSDK/1.3.239.0)
 

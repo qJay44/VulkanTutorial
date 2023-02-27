@@ -44,8 +44,7 @@ if (DEFINED GLFW_PATH)
     set(GLFW_LIB "${GLFW_PATH}/lib-mingw-w64") # 2.2 make sure matches glfw mingw subdirectory
   endif()
 else()
-  list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
-  find_package(GLFW3 REQUIRED)
+  find_package(glfw3 3.3 REQUIRED)
   set(GLFW_LIB glfw)
   message(STATUS "Found GLFW")
 endif()
@@ -97,7 +96,7 @@ if (WIN32)
     ${GLFW_LIB}
   )
 
-  target_link_libraries(${PROJECT_NAME} glfw3 vulkan-1)
+target_link_libraries(${PROJECT_NAME} glfw3 vulkan-1 ${GLFW_LIBRIRIES})
 elseif (UNIX)
     message(STATUS "CREATING BUILD FOR UNIX")
     target_include_directories(${PROJECT_NAME} PUBLIC
@@ -107,6 +106,8 @@ elseif (UNIX)
     target_link_libraries(${PROJECT_NAME} glfw ${Vulkan_LIBRARIES})
 endif()
 
+message(STATUS "glfw include: ${GLFW_INCLUDE_DIRS}")
+message(STATUS "glfw lib: ${GLFW_LIB}")
 
 ############## Build SHADERS #######################
 
