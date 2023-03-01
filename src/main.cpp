@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <stdlib.h>
 
 int main() {
   lve::FirstApp app{};
