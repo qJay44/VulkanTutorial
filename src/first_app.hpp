@@ -13,8 +13,7 @@ namespace lve {
 
     private:
       LveWindow lveWindow{ WIDTH, HEIGHT, "Vulkan" };
-      // TODO: fix shaders
-      /* LvePipeline LvePipeline{ "shaders/simple_shader.vert.spv", "shaders/simple_shader.frag.spv" }; */
+      LvePipeline lvePipeline{ "../src/shaders/simple_shader.vert.spv", "../src/shaders/simple_shader.frag.spv" };
   };
 }
 
