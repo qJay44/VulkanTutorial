@@ -89,7 +89,6 @@ if (WIN32)
     ${GLFW_INCLUDE_DIRS}
     ${GLM_PATH}
     )
-  message(STATUS ${GLFW_INCLUDE_DIRS})
 
   target_link_directories(${PROJECT_NAME} PUBLIC
     ${Vulkan_LIBRARIES}
@@ -105,9 +104,6 @@ elseif (UNIX)
     )
     target_link_libraries(${PROJECT_NAME} glfw ${Vulkan_LIBRARIES})
 endif()
-
-message(STATUS "glfw include: ${GLFW_INCLUDE_DIRS}")
-message(STATUS "glfw lib: ${GLFW_LIB}")
 
 ############## Build SHADERS #######################
 
