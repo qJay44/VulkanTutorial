@@ -28,12 +28,12 @@ namespace lve {
       LveSwapChain lveSwapChain{lveDevice, lveWindow.getExtent()};
       std::unique_ptr<LvePipeline> lvePipeline;
       VkPipelineLayout pipeLineLayout;
-      std::vector<VkCommandBuffer> commandBuffer;
+      std::vector<VkCommandBuffer> commandBuffers;
 
       void createPipelineLayout();
       void createPipeline();
       void createCommandBuffer();
-      void drawFram();
+      void drawFrame();
   };
 }
 
