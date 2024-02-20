@@ -1,5 +1,4 @@
 #include "first_app.hpp"
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 

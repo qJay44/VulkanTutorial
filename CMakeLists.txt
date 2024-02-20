@@ -68,7 +68,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/build")
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/build/debug")
 
 if (WIN32)
   message(STATUS "CREATING BUILD FOR WINDOWS")
@@ -105,7 +105,7 @@ elseif (UNIX)
     target_link_libraries(${PROJECT_NAME} glfw ${Vulkan_LIBRARIES})
 endif()
 
-############## Build SHADERS #######################
+#================= Build SHADERS =================#
 
 # Find all vertex and fragment sources within shaders directory
 # taken from VBlancos vulkan tutorial
@@ -126,10 +126,10 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
   "${PROJECT_SOURCE_DIR}/src/shaders/*.vert"
 )
 
+message(STATUS "BUILDING SHADERS")
 foreach(GLSL ${GLSL_SOURCE_FILES})
-  message(STATUS "BUILDING SHADERS")
   get_filename_component(FILE_NAME ${GLSL} NAME)
-  set(SPIRV "${PROJECT_SOURCE_DIR}/build/${FILE_NAME}.spv")
+  set(SPIRV "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/${FILE_NAME}.spv")
   message(STATUS ${GLSL})
   add_custom_command(
     OUTPUT ${SPIRV}

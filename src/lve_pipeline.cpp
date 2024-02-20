@@ -158,6 +158,14 @@ namespace lve {
     configInfo.rasterizationInfo.depthBiasClamp = 0.0f;           // Optional
     configInfo.rasterizationInfo.depthBiasSlopeFactor = 0.0f;     // Optional
 
+    configInfo.multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    configInfo.multisampleInfo.sampleShadingEnable = VK_FALSE;
+    configInfo.multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    configInfo.multisampleInfo.minSampleShading = 1.0f;           // Optional
+    configInfo.multisampleInfo.pSampleMask = nullptr;             // Optional
+    configInfo.multisampleInfo.alphaToCoverageEnable = VK_FALSE;  // Optional
+    configInfo.multisampleInfo.alphaToOneEnable = VK_FALSE;       // Optional
+
     configInfo.colorBlendAttachment.colorWriteMask =
         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
         VK_COLOR_COMPONENT_A_BIT;
@@ -178,6 +186,17 @@ namespace lve {
     configInfo.colorBlendInfo.blendConstants[1] = 0.0f;  // Optional
     configInfo.colorBlendInfo.blendConstants[2] = 0.0f;  // Optional
     configInfo.colorBlendInfo.blendConstants[3] = 0.0f;  // Optional
+
+    configInfo.depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    configInfo.depthStencilInfo.depthTestEnable = VK_TRUE;
+    configInfo.depthStencilInfo.depthWriteEnable = VK_TRUE;
+    configInfo.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+    configInfo.depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+    configInfo.depthStencilInfo.minDepthBounds = 0.0f;  // Optional
+    configInfo.depthStencilInfo.maxDepthBounds = 1.0f;  // Optional
+    configInfo.depthStencilInfo.stencilTestEnable = VK_FALSE;
+    configInfo.depthStencilInfo.front = {};  // Optional
+    configInfo.depthStencilInfo.back = {};   // Optional
 
     return configInfo;
   }
