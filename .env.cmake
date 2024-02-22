@@ -1,5 +1,5 @@
 set(GLFW_PATH "C:/Users/gerku/Documents/glfw-3.3.9")
-set(VULKAN_SDK_PATH  "C:/VulkanSDK/1.3.275.0")
+set(VULKAN_SDK_PATH "C:/VulkanSDK/1.3.275.0")
 set(GLM_PATH ${VULKAN_SDK_PATH}/Include/glm)
 set(MINGW_PATH "C:/Users/gerku/Documents/mingw64")
 set(TINYOBJ_PATH "C:/Users/gerku/Documents/simple-binaries/include")

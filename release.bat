@@ -8,4 +8,3 @@ C:\Users\gerku\Documents\mingw64\bin\mingw32-make.exe && C:\Users\gerku\Document
 if not exist ..\compile_commands.json move compile_commands.json ..\
 MyProject.exe
 cd ..\..\
-

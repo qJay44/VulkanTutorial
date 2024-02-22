@@ -1,12 +1,37 @@
 #include "first_app.hpp"
-#include "vulkan/vulkan_core.h"
+
+// std
 #include <array>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 
 namespace lve {
+
+  // https://pastebin.com/0bu2a2ZP
+  void sierpinski(
+    std::vector<LveModel::Vertex>& vertices,
+    signed depth,
+    glm::vec2 left,
+    glm::vec2 right,
+    glm::vec2 top
+  ) {
+    if (depth == 0) {
+      vertices.push_back({top});
+      vertices.push_back({right});
+      vertices.push_back({left});
+    } else {
+      auto leftTop = 0.5f * (left + top);
+      auto rightTop = 0.5f * (right + top);
+      auto leftRight = 0.5f * (left + right);
+      sierpinski(vertices, depth - 1, left, leftRight, leftTop);
+      sierpinski(vertices, depth - 1, leftRight, right, rightTop);
+      sierpinski(vertices, depth - 1, leftTop, rightTop, top);
+    }
+  }
+
   FirstApp::FirstApp() {
+    loadModels();
     createPipelineLayout();
     createPipeline();
     createCommandBuffer();
@@ -23,6 +48,12 @@ namespace lve {
     }
 
     vkDeviceWaitIdle(lveDevice.device());
+  }
+
+  void FirstApp::loadModels() {
+    std::vector<LveModel::Vertex> vertices;
+    sierpinski(vertices, 5, {0.f, -0.5f}, {0.5f, 0.5f}, {-0.5f, 0.5f});
+    lveModel = std::make_unique<LveModel>(lveDevice, vertices);
   }
 
   void FirstApp::createPipelineLayout() {
@@ -85,7 +116,8 @@ namespace lve {
       vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
       lvePipeline->bind(commandBuffers[i]);
-      vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+      lveModel->bind(commandBuffers[i]);
+      lveModel->draw(commandBuffers[i]);
 
       vkCmdEndRenderPass(commandBuffers[i]);
       if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)

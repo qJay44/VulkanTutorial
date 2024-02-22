@@ -19,17 +19,17 @@ project(${NAME} VERSION 0.23.0)
 
 # 1. Set VULKAN_SDK_PATH in .env.cmake to target specific vulkan version
 if (DEFINED VULKAN_SDK_PATH)
-  set(Vulkan_INCLUDE_DIRS "${VULKAN_SDK_PATH}/Include") # 1.1 Make sure this include path is correct
-  set(Vulkan_LIBRARIES "${VULKAN_SDK_PATH}/Lib") # 1.2 Make sure lib path is correct
-  set(Vulkan_FOUND "True")
+  set(VULKAN_INCLUDE_DIRS "${VULKAN_SDK_PATH}/Include") # 1.1 Make sure this include path is correct
+  set(VULKAN_LIBS "${VULKAN_SDK_PATH}/Lib") # 1.2 Make sure lib path is correct
+  set(VULKAN_FOUND "True")
 else()
   find_package(Vulkan REQUIRED) # throws error if could not find Vulkan
   message(STATUS "Found Vulkan: $ENV{VULKAN_SDK}")
 endif()
-if (NOT Vulkan_FOUND)
+if (NOT VULKAN_FOUND)
 	message(FATAL_ERROR "Could not find Vulkan library!")
 else()
-	message(STATUS "Using vulkan lib at: ${Vulkan_LIBRARIES}")
+	message(STATUS "Using Vulkan libs at: ${VULKAN_LIBS}")
 endif()
 
 
@@ -38,20 +38,20 @@ if (DEFINED GLFW_PATH)
   message(STATUS "Using GLFW path specified in .env")
   set(GLFW_INCLUDE_DIRS "${GLFW_PATH}/include")
   if (MSVC)
-    set(GLFW_LIB "${GLFW_PATH}/lib-vc2019") # 2.1 Update lib-vc2019 to use same version as your visual studio
+    set(GLFW_LIBS "${GLFW_PATH}/lib-vc2019") # 2.1 Update lib-vc2019 to use same version as your visual studio
   elseif (CMAKE_GENERATOR STREQUAL "MinGW Makefiles")
     message(STATUS "USING MINGW")
-    set(GLFW_LIB "${GLFW_PATH}/lib-mingw-w64") # 2.2 make sure matches glfw mingw subdirectory
+    set(GLFW_LIBS "${GLFW_PATH}/lib-mingw-w64") # 2.2 make sure matches glfw mingw subdirectory
   endif()
 else()
   find_package(glfw3 3.3 REQUIRED)
-  set(GLFW_LIB glfw)
+  set(GLFW_LIBS glfw)
   message(STATUS "Found GLFW")
 endif()
-if (NOT GLFW_LIB)
+if (NOT GLFW_LIBS)
 	message(FATAL_ERROR "Could not find glfw library!")
 else()
-	message(STATUS "Using glfw lib at: ${GLFW_LIB}")
+	message(STATUS "Using glfw lib at: ${GLFW_LIBS}")
 endif()
 
 include_directories(external)
@@ -84,25 +84,24 @@ if (WIN32)
 
   target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/src
-    ${Vulkan_INCLUDE_DIRS}
+    ${VULKAN_INCLUDE_DIRS}
     ${TINYOBJ_PATH}
     ${GLFW_INCLUDE_DIRS}
     ${GLM_PATH}
     )
 
   target_link_directories(${PROJECT_NAME} PUBLIC
-    ${Vulkan_LIBRARIES}
-    ${GLFW_LIB}
+    ${VULKAN_LIBS}
+    ${GLFW_LIBS}
   )
 
-target_link_libraries(${PROJECT_NAME} glfw3 vulkan-1 ${GLFW_LIBRIRIES})
+target_link_libraries(${PROJECT_NAME} glfw3 vulkan-1)
 elseif (UNIX)
     message(STATUS "CREATING BUILD FOR UNIX")
     target_include_directories(${PROJECT_NAME} PUBLIC
-      ${PROJECT_SOURCE_DIR}/src
       ${TINYOBJ_PATH}
     )
-    target_link_libraries(${PROJECT_NAME} glfw ${Vulkan_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} glfw ${VULKAN_LIBS})
 endif()
 
 #================= Build SHADERS =================#
@@ -111,7 +110,7 @@ endif()
 # taken from VBlancos vulkan tutorial
 # https://github.com/vblanco20-1/vulkan-guide/blob/all-chapters/CMakeLists.txt
 find_program(GLSL_VALIDATOR glslangValidator HINTS
-  ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}
+  ${VULKAN_GLSLANG_VALIDATOR_EXECUTABLE}
   /usr/bin
   /usr/local/bin
   ${VULKAN_SDK_PATH}/Bin

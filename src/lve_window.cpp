@@ -1,5 +1,4 @@
 #include "lve_window.hpp"
-#include "GLFW/glfw3.h"
 #include <stdexcept>
 
 namespace lve {
