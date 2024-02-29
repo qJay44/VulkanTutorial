@@ -15,9 +15,10 @@ class LveModel {
   public:
     struct Vertex {
       glm::vec2 position;
+      glm::vec3 color;
 
       static std::vector<VkVertexInputBindingDescription> getBindingDescriptipons();
-      static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptipons();
+      static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
     };
 
     LveModel(LveDevice& device, const std::vector<Vertex>& vertices);

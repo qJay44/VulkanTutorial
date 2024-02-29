@@ -3,6 +3,7 @@
 
 // std
 #include <cassert>
+#include <cstddef>
 #include <cstring>
 
 namespace lve {
@@ -48,8 +49,11 @@ std::vector<VkVertexInputBindingDescription> LveModel::Vertex::getBindingDescrip
   return {{0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX}};
 }
 
-std::vector<VkVertexInputAttributeDescription> LveModel::Vertex::getAttributeDescriptipons() {
-  return {{0, 0, VK_FORMAT_R32G32_SFLOAT, 0}};
+std::vector<VkVertexInputAttributeDescription> LveModel::Vertex::getAttributeDescriptions() {
+  return {
+    {0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, position)},
+    {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color)}
+  };
 }
 
 } // namespace lve

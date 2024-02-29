@@ -17,9 +17,9 @@ namespace lve {
     glm::vec2 top
   ) {
     if (depth == 0) {
-      vertices.push_back({top});
-      vertices.push_back({right});
-      vertices.push_back({left});
+      vertices.push_back({{top}  , {1.f, 0.f, 0.f}});
+      vertices.push_back({{right}, {0.f, 1.f, 0.f}});
+      vertices.push_back({{left} , {0.f, 0.f, 1.f}});
     } else {
       auto leftTop = 0.5f * (left + top);
       auto rightTop = 0.5f * (right + top);
@@ -51,8 +51,14 @@ namespace lve {
   }
 
   void FirstApp::loadModels() {
-    std::vector<LveModel::Vertex> vertices;
-    sierpinski(vertices, 5, {0.f, -0.5f}, {0.5f, 0.5f}, {-0.5f, 0.5f});
+    /* std::vector<LveModel::Vertex> vertices; */
+    /* sierpinski(vertices, 5, {0.f, -0.5f}, {0.5f, 0.5f}, {-0.5f, 0.5f}); */
+
+    std::vector<LveModel::Vertex> vertices {
+      {{0.f, -0.5f} , {1.f, 0.f, 0.f}},
+      {{0.5f, 0.5f} , {0.f, 1.f, 0.f}},
+      {{-0.5f, 0.5f}, {0.f, 0.f, 1.f}},
+    };
     lveModel = std::make_unique<LveModel>(lveDevice, vertices);
   }
 

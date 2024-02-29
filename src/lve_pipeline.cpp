@@ -81,7 +81,7 @@ namespace lve {
     shaderStages[1].pNext = nullptr;
     shaderStages[1].pSpecializationInfo = nullptr;
 
-    auto attributeDescriptions = LveModel::Vertex::getAttributeDescriptipons();
+    auto attributeDescriptions = LveModel::Vertex::getAttributeDescriptions();
     auto bindingDescriptions = LveModel::Vertex::getBindingDescriptipons();
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
