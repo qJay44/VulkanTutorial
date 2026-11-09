@@ -17,22 +17,41 @@ find_package(Vulkan REQUIRED)
 
 find_package(glfw3 REQUIRED)
 
+# ===== My utils ================================================== #
+
+file(GLOB_RECURSE UTILS_SOURCES ${UTILS_PATH}/src/*.cpp)
+
+# Remove TIFF from sources
+list(REMOVE_ITEM UTILS_SOURCES ${UTILS_PATH}/src/loadTif.cpp)
+list(REMOVE_ITEM UTILS_SOURCES ${UTILS_PATH}/src/saveTif.cpp)
+
+add_library(Utils STATIC ${UTILS_SOURCES})
+
+target_include_directories(Utils PUBLIC ${UTILS_PATH}/include)
+
 # ===== Main ====================================================== #
 
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wextra)
+
+target_precompile_headers(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src/pch.hpp)
+
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
   ${VULKAN_INCLUDE_DIRS}
-  ${TOL_PATH}
   ${GLFW_INCLUDE_DIRS}
-  ${GLM_PATH}
+  ${TOL_PATH}/include
+  ${GLM_PATH}/include
+  ${STB_PATH}/include
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   Vulkan::Vulkan
   glfw
+  Utils
 )
 
 # ===== Build Shaders ============================================= #

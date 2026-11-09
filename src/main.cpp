@@ -1,19 +1,14 @@
-#include <cstdlib>
-#include <iostream>
-#include <stdlib.h>
+#include "first_app.hpp"
+#include "utils/utils.hpp"
 
 int main() {
-  // lve::FirstApp app{};
+  lve::FirstApp app{};
 
-  // try {
-  //   app.run();
-  // } catch (const std::exception &e) {
-  //   std::cerr << e.what() << '\n';
-
-  //   return EXIT_FAILURE;
-  // }
-
-  puts("Hello, Vulkan");
+  try {
+    app.run();
+  } catch (std::exception& e) {
+    error("[main.cpp]:\n{}", e.what());
+  }
 
   return EXIT_SUCCESS;
 }
