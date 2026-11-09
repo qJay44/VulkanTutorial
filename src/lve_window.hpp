@@ -12,6 +12,8 @@ public:
 
   bool shouldClose();
 
+  void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
+
 private:
   GLFWwindow* window;
   const int width, height;

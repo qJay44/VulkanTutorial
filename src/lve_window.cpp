@@ -1,4 +1,5 @@
 #include "lve_window.hpp"
+#include "utils/utils.hpp"
 
 namespace lve {
 
@@ -15,6 +16,12 @@ LveWindow::~LveWindow() {
 
 bool LveWindow::shouldClose() {
   return glfwWindowShouldClose(window);
+}
+
+void LveWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) {
+  if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
+    error("[LveWindow::createWindowSurface] Failed to create window surface");
+
 }
 
 void LveWindow::initWindow() {
