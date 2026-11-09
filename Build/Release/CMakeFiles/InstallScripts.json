@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/q44/Projects/VulkanTutorial/Build/Release/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

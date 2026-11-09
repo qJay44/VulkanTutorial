@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/q44/Projects/VulkanTutorial/Build/Release",
+  "command": "/usr/bin/c++  -isystem /home/q44/Libs/tiny_obj_loader -isystem /home/q44/Libs/glm -O3 -DNDEBUG -std=gnu++23 -o CMakeFiles/MyProject.dir/src/main.cpp.o -c /home/q44/Projects/VulkanTutorial/src/main.cpp",
+  "file": "/home/q44/Projects/VulkanTutorial/src/main.cpp",
+  "output": "CMakeFiles/MyProject.dir/src/main.cpp.o"
+}
+]
