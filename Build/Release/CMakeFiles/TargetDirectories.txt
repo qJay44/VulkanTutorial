@@ -1,4 +1,0 @@
-/home/q44/Projects/VulkanTutorial/Build/Release/CMakeFiles/MyProject.dir
-/home/q44/Projects/VulkanTutorial/Build/Release/CMakeFiles/Shaders.dir
-/home/q44/Projects/VulkanTutorial/Build/Release/CMakeFiles/edit_cache.dir
-/home/q44/Projects/VulkanTutorial/Build/Release/CMakeFiles/rebuild_cache.dir
