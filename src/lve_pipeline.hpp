@@ -8,8 +8,8 @@ namespace lve {
 struct PipelineConfigInfo {
   VkViewport viewport;
   VkRect2D scissor;
-  VkPipelineViewportStateCreateInfo viewportInfo;
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+  VkPipelineViewportStateCreateInfo viewportInfo;
   VkPipelineRasterizationStateCreateInfo rasterizationInfo;
   VkPipelineMultisampleStateCreateInfo multisampleInfo;
   VkPipelineColorBlendAttachmentState colorBlendAttachment;
@@ -34,7 +34,7 @@ public:
   LvePipeline(const LvePipeline&) = delete;
   LvePipeline& operator=(const LvePipeline&) = delete;
 
-  static PipelineConfigInfo defaultPipelineConfigInfo(u32 width, u32 height);
+  static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo, u32 width, u32 height);
 
 private:
   LveDevice& lveDevice;

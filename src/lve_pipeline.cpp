@@ -1,7 +1,5 @@
 #include "lve_pipeline.hpp"
 #include "utils/utils.hpp"
-#include <cassert>
-#include <vulkan/vulkan_core.h>
 
 namespace lve {
 
@@ -22,9 +20,7 @@ LvePipeline::~LvePipeline() {
   vkDestroyPipeline(lveDevice.device(), graphicsPipeline, nullptr);
 }
 
-PipelineConfigInfo LvePipeline::defaultPipelineConfigInfo(u32 width, u32 height) {
-  PipelineConfigInfo configInfo{};
-
+void LvePipeline::defaultPipelineConfigInfo(PipelineConfigInfo& configInfo, u32 width, u32 height) {
   configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
   configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   configInfo.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
@@ -96,8 +92,6 @@ PipelineConfigInfo LvePipeline::defaultPipelineConfigInfo(u32 width, u32 height)
   configInfo.depthStencilInfo.stencilTestEnable = VK_FALSE;
   configInfo.depthStencilInfo.front = {};  // Optional
   configInfo.depthStencilInfo.back = {};   // Optional
-
-  return configInfo;
 }
 
 void LvePipeline::createGraphicsPipeline(const PipelineConfigInfo& configInfo, fspath vertPath, fspath fragPath) {
