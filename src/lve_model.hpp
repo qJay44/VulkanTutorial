@@ -7,7 +7,8 @@ namespace lve {
 class LveModel {
 public:
   struct Vertex {
-    vec2 positon;
+    vec2 position;
+    vec3 color;
 
     static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
