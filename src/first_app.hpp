@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lve_model.hpp"
 #include "lve_swap_chain.hpp"
 #include "lve_window.hpp"
 #include "lve_pipeline.hpp"
@@ -28,8 +29,10 @@ private:
   std::unique_ptr<LvePipeline> lvePipeline;
   VkPipelineLayout pipelineLayout;
   std::vector<VkCommandBuffer> commandBuffers;
+  std::unique_ptr<LveModel> lveModel;
 
 private:
+  void loadModels();
   void createPipelineLayout();
   void createPipeline();
   void createCommandBuffers();

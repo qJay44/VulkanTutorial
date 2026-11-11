@@ -4,6 +4,7 @@
 namespace lve {
 
 FirstApp::FirstApp() {
+  loadModels();
   createPipelineLayout();
   createPipeline();
   createCommandBuffers();
@@ -20,6 +21,35 @@ void FirstApp::run() {
   }
 
   vkDeviceWaitIdle(lveDevice.device());
+}
+
+void serp(std::vector<LveModel::Vertex>& vertices, int d, vec2 a, vec2 b, vec2 c) {
+  if (d < 1) {
+    vertices.push_back({a});
+    vertices.push_back({b});
+    vertices.push_back({c});
+    return;
+  }
+
+  vec2 ab = (a + b) * 0.5f;
+  vec2 ac = (a + c) * 0.5f;
+  vec2 bc = (b + c) * 0.5f;
+
+  serp(vertices, d - 1, a, ab, ac);
+  serp(vertices, d - 1, ab, b, bc);
+  serp(vertices, d - 1, ac, bc, c);
+}
+
+void FirstApp::loadModels() {
+  std::vector<LveModel::Vertex> vertices{
+    // {{ 0.0f, -0.5f}},
+    // {{ 0.5f,  0.5f}},
+    // {{-0.5f,  0.5f}},
+  };
+
+  serp(vertices, 5, {-0.5f, 0.5f}, {0.5f, 0.5f}, {0.f, -0.5f});
+
+  lveModel = std::make_unique<LveModel>(lveDevice, vertices);
 }
 
 void FirstApp::createPipelineLayout() {
@@ -85,7 +115,8 @@ void FirstApp::createCommandBuffers() {
     vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     lvePipeline->bind(commandBuffers[i]);
-    vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+    lveModel->bind(commandBuffers[i]);
+    lveModel->draw(commandBuffers[i]);
 
     vkCmdEndRenderPass(commandBuffers[i]);
     if (vkEndCommandBuffer(commandBuffers[i]))

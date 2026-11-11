@@ -1,4 +1,5 @@
 #include "lve_pipeline.hpp"
+#include "lve_model.hpp"
 #include "utils/utils.hpp"
 
 namespace lve {
@@ -128,12 +129,15 @@ void LvePipeline::createGraphicsPipeline(const PipelineConfigInfo& configInfo, f
   shaderStages[1].pNext = nullptr;
   shaderStages[1].pSpecializationInfo = nullptr;
 
+  auto bindingDescriptions = LveModel::Vertex::getBindingDescriptions();
+  auto attributeDescriptions = LveModel::Vertex::getAttributeDescriptions();
+
   VkPipelineVertexInputStateCreateInfo vertInputInfo{};
   vertInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertInputInfo.vertexAttributeDescriptionCount = 0;
-  vertInputInfo.vertexBindingDescriptionCount = 0;
-  vertInputInfo.pVertexAttributeDescriptions = nullptr;
-  vertInputInfo.pVertexBindingDescriptions = nullptr;
+  vertInputInfo.vertexAttributeDescriptionCount = static_cast<u32>(attributeDescriptions.size());
+  vertInputInfo.vertexBindingDescriptionCount = static_cast<u32>(bindingDescriptions.size());
+  vertInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+  vertInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
 
   VkGraphicsPipelineCreateInfo pipelineInfo{};
   pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
