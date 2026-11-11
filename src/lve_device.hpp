@@ -30,10 +30,10 @@ class LveDevice {
   ~LveDevice();
 
   // Not copyable or movable
-  LveDevice(const LveDevice &) = delete;
-  void operator=(const LveDevice &) = delete;
-  LveDevice(LveDevice &&) = delete;
-  LveDevice &operator=(LveDevice &&) = delete;
+  LveDevice(const LveDevice&) = delete;
+  LveDevice& operator=(const LveDevice&) = delete;
+  LveDevice(LveDevice&&) = delete;
+  LveDevice& operator=(LveDevice&&) = delete;
 
   VkCommandPool getCommandPool() { return commandPool; }
   VkDevice device() { return device_; }
@@ -54,6 +54,7 @@ class LveDevice {
       VkMemoryPropertyFlags properties,
       VkBuffer &buffer,
       VkDeviceMemory &bufferMemory);
+
   VkCommandBuffer beginSingleTimeCommands();
   void endSingleTimeCommands(VkCommandBuffer commandBuffer);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);

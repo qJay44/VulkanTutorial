@@ -3,13 +3,16 @@
 namespace lve {
 
 LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent)
-    : device{deviceRef}, windowExtent{extent} {
-  createSwapChain();
-  createImageViews();
-  createRenderPass();
-  createDepthResources();
-  createFramebuffers();
-  createSyncObjects();
+    : device(deviceRef), windowExtent(extent)
+{
+  init();
+}
+
+LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent, std::shared_ptr<LveSwapChain> previous)
+    : device(deviceRef), windowExtent(extent), oldSwapChain(previous)
+{
+  init();
+  oldSwapChain = nullptr;
 }
 
 LveSwapChain::~LveSwapChain() {
@@ -109,6 +112,15 @@ VkResult LveSwapChain::submitCommandBuffers(const VkCommandBuffer *buffers, uint
   return result;
 }
 
+void LveSwapChain::init() {
+  createSwapChain();
+  createImageViews();
+  createRenderPass();
+  createDepthResources();
+  createFramebuffers();
+  createSyncObjects();
+}
+
 void LveSwapChain::createSwapChain() {
   SwapChainSupportDetails swapChainSupport = device.getSwapChainSupport();
 
@@ -152,7 +164,7 @@ void LveSwapChain::createSwapChain() {
   createInfo.presentMode = presentMode;
   createInfo.clipped = VK_TRUE;
 
-  createInfo.oldSwapchain = VK_NULL_HANDLE;
+  createInfo.oldSwapchain = oldSwapChain ? oldSwapChain->swapChain : VK_NULL_HANDLE;
 
   if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
     error("[LveSwapChain::createSwapChain] Failed to create swap chain!");

@@ -12,15 +12,19 @@ public:
 
   bool shouldClose();
   VkExtent2D getExtent();
+  bool wasWindowResized();
+  void resetWindowResizedFlag();
 
   void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 
 private:
   GLFWwindow* window;
-  const int width, height;
+  int width, height;
+  bool framebufferResized = false;
   std::string name;
 
 private:
+  static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
   void initWindow();
 };
 
