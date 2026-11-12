@@ -26,7 +26,9 @@ private:
   LveDevice lveDevice{lveWindow};
   LveRenderer lveRenderer{lveWindow, lveDevice};
 
-  std::vector<LveGameObject> gameObjects;
+  std::vector<LveGameObject> gameObjectsTriangles;
+  std::vector<LveGameObject> gameObjectsPhysicsObjects;
+  std::vector<LveGameObject> gameObjectsVectorField;
 
 private:
   void loadGameObjects();

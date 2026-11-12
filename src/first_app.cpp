@@ -1,5 +1,7 @@
 #include "first_app.hpp"
+#include "bonus/gravity-vec-field/default.hpp"
 #include "simple_render_system.hpp"
+#include "bonus/gravity-vec-field/Vec2FieldSystem.hpp"
 
 namespace lve {
 
@@ -10,20 +12,34 @@ FirstApp::FirstApp() {
 FirstApp::~FirstApp() {}
 
 void FirstApp::run() {
+  bonus::gvf::GravityPhysicsSystem gravitySystem(0.81f);
+  bonus::gvf::Vec2FieldSystem vecFieldSystem{};
+
   SimpleRenderSystem simpleRenderSystem(lveDevice, lveRenderer.getSwapChainRenderPass());
 
   while (!lveWindow.shouldClose()) {
     glfwPollEvents();
 
     if (auto commandBuffer = lveRenderer.beginFrame()) {
+      // ----- Update system ----------------------------------------------------------------------------------------------------------- //
+
+      gravitySystem.update(gameObjectsPhysicsObjects, 1.f / 1200.f, 5); // Need the "actual" dt?
+      vecFieldSystem.update(gravitySystem, gameObjectsPhysicsObjects, gameObjectsVectorField);
+
+      // ----- Render system ----------------------------------------------------------------------------------------------------------- //
+
       // begin offscreen shadow pass
       // render shadow casting objects
       // end offscreen shadow pass
 
       lveRenderer.beginSwapChainRenderPass(commandBuffer);
-      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects);
+      // simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsTriangles);
+      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsPhysicsObjects);
+      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsVectorField);
       lveRenderer.endSwapChainRenderPass(commandBuffer);
       lveRenderer.endFrame();
+
+      // --------------------------------------------------------------------------------------------------------------------------------- //
     }
   }
 
@@ -52,8 +68,11 @@ void FirstApp::loadGameObjects() {
     triangle.transform2d.scale = vec2{1.f} * (i * step);
 
 
-    gameObjects.push_back(std::move(triangle));
+    gameObjectsTriangles.push_back(std::move(triangle));
   }
+
+  gameObjectsPhysicsObjects = bonus::gvf::createDefaultPhysicsObjects(lveDevice);
+  gameObjectsVectorField    = bonus::gvf::createDefaultVectorField(lveDevice);
 }
 
 } // namespace lve

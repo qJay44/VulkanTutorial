@@ -12,11 +12,17 @@ struct Transform2dComponent {
   mat2 model() const;
 };
 
+struct RigidBody2dComponent {
+  vec2 velocity{};
+  float mass{1.f};
+};
+
 class LveGameObject {
 public:
   std::shared_ptr<LveModel> model{};
   vec3 color{};
   Transform2dComponent transform2d{};
+  RigidBody2dComponent rigidBody2d{};
 
 public:
   using id_t = unsigned int;
