@@ -15,6 +15,10 @@ VkRenderPass LveRenderer::getSwapChainRenderPass() const {
   return lveSwapChain->getRenderPass();
 }
 
+float LveRenderer::getAspectRatio() const {
+  return lveSwapChain->extentAspectRatio();
+}
+
 bool LveRenderer::isFrameInProgress() const {
   return isFrameStarted;
 }
@@ -110,7 +114,7 @@ void LveRenderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
   viewport.width = static_cast<float>(swapChainExtent.width);
   viewport.height = static_cast<float>(swapChainExtent.height);
   viewport.minDepth = 0.f;
-  viewport.maxDepth = 0.f;
+  viewport.maxDepth = 1.f;
   VkRect2D scissor{{0, 0}, swapChainExtent};
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
