@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lve_model.hpp"
+#include "lve_game_object.hpp"
 #include "lve_swap_chain.hpp"
 #include "lve_window.hpp"
 #include "lve_pipeline.hpp"
@@ -29,17 +29,18 @@ private:
   std::unique_ptr<LvePipeline> lvePipeline;
   VkPipelineLayout pipelineLayout;
   std::vector<VkCommandBuffer> commandBuffers;
-  std::unique_ptr<LveModel> lveModel;
+  std::vector<LveGameObject> gameObjects;
 
 private:
-  void loadModels();
+  void loadGameObjects();
   void createPipelineLayout();
   void createPipeline();
   void createCommandBuffers();
   void freeCommandBuffers();
+  void recordCommandBuffer(int imageIndex);
+  void renderGameObjects(VkCommandBuffer commandBuffer);
   void drawFrame();
   void recreateSwapChain();
-  void recordCommandBuffer(int imageIndex);
 };
 
 } // namespace lve
