@@ -1,9 +1,8 @@
 #pragma once
 
 #include "lve_game_object.hpp"
-#include "lve_swap_chain.hpp"
+#include "lve_renderer.hpp"
 #include "lve_window.hpp"
-#include "lve_pipeline.hpp"
 #include "lve_device.hpp"
 
 namespace lve {
@@ -25,22 +24,12 @@ public:
 private:
   LveWindow lveWindow{WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME};
   LveDevice lveDevice{lveWindow};
-  std::unique_ptr<LveSwapChain> lveSwapChain;
-  std::unique_ptr<LvePipeline> lvePipeline;
-  VkPipelineLayout pipelineLayout;
-  std::vector<VkCommandBuffer> commandBuffers;
+  LveRenderer lveRenderer{lveWindow, lveDevice};
+
   std::vector<LveGameObject> gameObjects;
 
 private:
   void loadGameObjects();
-  void createPipelineLayout();
-  void createPipeline();
-  void createCommandBuffers();
-  void freeCommandBuffers();
-  void recordCommandBuffer(int imageIndex);
-  void renderGameObjects(VkCommandBuffer commandBuffer);
-  void drawFrame();
-  void recreateSwapChain();
 };
 
 } // namespace lve

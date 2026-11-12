@@ -112,6 +112,10 @@ VkResult LveSwapChain::submitCommandBuffers(const VkCommandBuffer *buffers, uint
   return result;
 }
 
+bool LveSwapChain::compareSwapFormats(const LveSwapChain& rhs) const {
+  return swapChainDepthFormat == rhs.swapChainDepthFormat && swapChainImageFormat == rhs.swapChainImageFormat;
+}
+
 void LveSwapChain::init() {
   createSwapChain();
   createImageViews();
@@ -290,6 +294,7 @@ void LveSwapChain::createFramebuffers() {
 
 void LveSwapChain::createDepthResources() {
   VkFormat depthFormat = findDepthFormat();
+  swapChainDepthFormat = depthFormat;
   VkExtent2D swapChainExtent = getSwapChainExtent();
 
   depthImages.resize(imageCount());
