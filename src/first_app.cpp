@@ -1,9 +1,71 @@
 #include "first_app.hpp"
-#include "bonus/gravity-vec-field/default.hpp"
+
 #include "simple_render_system.hpp"
-#include "bonus/gravity-vec-field/Vec2FieldSystem.hpp"
 
 namespace lve {
+
+namespace {
+
+// temporary helper function, creates a 1x1x1 cube centered at offset
+std::unique_ptr<LveModel> createCubeModel(LveDevice& device, glm::vec3 offset) {
+  std::vector<LveModel::Vertex> vertices{
+      // front face (blue)
+      {{-0.5f, -0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+      {{-0.5f,  0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+      {{-0.5f, -0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+      {{ 0.5f, -0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+
+      // tail face (green)
+      {{-0.5f, -0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+      {{ 0.5f,  0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+      {{-0.5f,  0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+      {{-0.5f, -0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+      {{ 0.5f, -0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+      {{ 0.5f,  0.5f, -0.5f}, {0.1f, 0.8f, 0.1f}},
+
+      // left face (white)
+      {{-0.5f, -0.5f, -0.5f}, {0.9f, 0.9f, 0.9f}},
+      {{-0.5f,  0.5f,  0.5f}, {0.9f, 0.9f, 0.9f}},
+      {{-0.5f, -0.5f,  0.5f}, {0.9f, 0.9f, 0.9f}},
+      {{-0.5f, -0.5f, -0.5f}, {0.9f, 0.9f, 0.9f}},
+      {{-0.5f,  0.5f, -0.5f}, {0.9f, 0.9f, 0.9f}},
+      {{-0.5f,  0.5f,  0.5f}, {0.9f, 0.9f, 0.9f}},
+
+      // right face (yellow)
+      {{ 0.5f, -0.5f, -0.5f}, {0.8f, 0.8f, 0.1f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.8f, 0.8f, 0.1f}},
+      {{ 0.5f, -0.5f,  0.5f}, {0.8f, 0.8f, 0.1f}},
+      {{ 0.5f, -0.5f, -0.5f}, {0.8f, 0.8f, 0.1f}},
+      {{ 0.5f,  0.5f, -0.5f}, {0.8f, 0.8f, 0.1f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.8f, 0.8f, 0.1f}},
+
+      // top face (orange, remember y axis points down)
+      {{-0.5f, -0.5f, -0.5f}, {0.9f, 0.6f, 0.1f}},
+      {{ 0.5f, -0.5f,  0.5f}, {0.9f, 0.6f, 0.1f}},
+      {{-0.5f, -0.5f,  0.5f}, {0.9f, 0.6f, 0.1f}},
+      {{-0.5f, -0.5f, -0.5f}, {0.9f, 0.6f, 0.1f}},
+      {{ 0.5f, -0.5f, -0.5f}, {0.9f, 0.6f, 0.1f}},
+      {{ 0.5f, -0.5f,  0.5f}, {0.9f, 0.6f, 0.1f}},
+
+      // bottom face (red)
+      {{-0.5f,  0.5f, -0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{-0.5f,  0.5f,  0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{-0.5f,  0.5f, -0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{ 0.5f,  0.5f, -0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.8f, 0.1f, 0.1f}},
+      {{ 0.5f,  0.5f,  0.5f}, {0.1f, 0.1f, 0.8f}},
+  };
+
+  for (auto& v : vertices)
+    v.position += offset;
+
+  return std::make_unique<LveModel>(device, vertices);
+}
+
+} // namespace
 
 FirstApp::FirstApp() {
   loadGameObjects();
@@ -12,9 +74,6 @@ FirstApp::FirstApp() {
 FirstApp::~FirstApp() {}
 
 void FirstApp::run() {
-  bonus::gvf::GravityPhysicsSystem gravitySystem(0.81f);
-  bonus::gvf::Vec2FieldSystem vecFieldSystem{};
-
   SimpleRenderSystem simpleRenderSystem(lveDevice, lveRenderer.getSwapChainRenderPass());
 
   while (!lveWindow.shouldClose()) {
@@ -23,8 +82,6 @@ void FirstApp::run() {
     if (auto commandBuffer = lveRenderer.beginFrame()) {
       // ----- Update system ----------------------------------------------------------------------------------------------------------- //
 
-      gravitySystem.update(gameObjectsPhysicsObjects, 1.f / 1200.f, 5); // Need the "actual" dt?
-      vecFieldSystem.update(gravitySystem, gameObjectsPhysicsObjects, gameObjectsVectorField);
 
       // ----- Render system ----------------------------------------------------------------------------------------------------------- //
 
@@ -33,9 +90,7 @@ void FirstApp::run() {
       // end offscreen shadow pass
 
       lveRenderer.beginSwapChainRenderPass(commandBuffer);
-      // simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsTriangles);
-      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsPhysicsObjects);
-      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjectsVectorField);
+      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects);
       lveRenderer.endSwapChainRenderPass(commandBuffer);
       lveRenderer.endFrame();
 
@@ -47,32 +102,14 @@ void FirstApp::run() {
 }
 
 void FirstApp::loadGameObjects() {
-  std::vector<LveModel::Vertex> vertices{
-    {{ 0.0f, -0.5f}, {1.f, 0.f, 0.f,}},
-    {{ 0.5f,  0.5f}, {0.f, 1.f, 0.f,}},
-    {{-0.5f,  0.5f}, {0.f, 0.f, 1.f,}},
-  };
+  std::shared_ptr<LveModel> lveModel = createCubeModel(lveDevice, {0.f, 0.f, 0.f});
 
-  auto lveModel = std::make_shared<LveModel>(lveDevice, vertices);
+  auto cube = LveGameObject::createGameObject();
+  cube.model = lveModel;
+  cube.transform.translation = {0.f, 0.f, 0.5f};
+  cube.transform.scale = vec3(0.5f);
 
-  int cnt = 12;
-  float step = 1.f / cnt;
-  for (int i = 0; i < cnt; i++) {
-    auto triangle = LveGameObject::createGameObject();
-    int c = i % 3;
-    triangle.model = lveModel;
-    triangle.color = vec3{0.8f};
-    triangle.color[c] *= 0.f;
-    triangle.transform2d.translation = vec2{0.f};
-    triangle.transform2d.rotation = 0.25f * glm::two_pi<float>() * i * step;
-    triangle.transform2d.scale = vec2{1.f} * (i * step);
-
-
-    gameObjectsTriangles.push_back(std::move(triangle));
-  }
-
-  gameObjectsPhysicsObjects = bonus::gvf::createDefaultPhysicsObjects(lveDevice);
-  gameObjectsVectorField    = bonus::gvf::createDefaultVectorField(lveDevice);
+  gameObjects.push_back(std::move(cube));
 }
 
 } // namespace lve

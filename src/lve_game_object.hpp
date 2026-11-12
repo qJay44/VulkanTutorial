@@ -4,25 +4,19 @@
 
 namespace lve {
 
-struct Transform2dComponent {
-  vec2 translation{};
-  vec2 scale{1.f};
-  float rotation{};
+struct TransformComponent {
+  vec3 translation{};
+  vec3 scale{1.f};
+  vec3 rotation{};
 
-  mat2 model() const;
-};
-
-struct RigidBody2dComponent {
-  vec2 velocity{};
-  float mass{1.f};
+  mat4 model() const;
 };
 
 class LveGameObject {
 public:
   std::shared_ptr<LveModel> model{};
   vec3 color{};
-  Transform2dComponent transform2d{};
-  RigidBody2dComponent rigidBody2d{};
+  TransformComponent transform{};
 
 public:
   using id_t = unsigned int;
