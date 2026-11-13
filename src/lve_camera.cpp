@@ -23,7 +23,7 @@ void LveCamera::setViewTarget(vec3 position, vec3 target, vec3 up) {
 void LveCamera::setViewYXZ(vec3 position, vec3 rotation) {
   mat4 rot = glm::eulerAngleYXZ(rotation.y, rotation.x, rotation.z);
   mat4 invRot = glm::transpose(rot);
-  mat4 invTrans = glm::translate(mat4(1.f), position);
+  mat4 invTrans = glm::translate(mat4(1.f), -position);
 
   viewMatrix = invRot * invTrans;
 }

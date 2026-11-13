@@ -14,6 +14,7 @@ public:
   VkExtent2D getExtent();
   bool wasWindowResized();
   void resetWindowResizedFlag();
+  GLFWwindow* getGFLWwindow() const;
 
   void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 

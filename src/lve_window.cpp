@@ -33,6 +33,10 @@ void LveWindow::resetWindowResizedFlag() {
   framebufferResized = false;
 }
 
+GLFWwindow* LveWindow::getGFLWwindow() const {
+  return window;
+}
+
 void LveWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) {
   if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
     error("[LveWindow::createWindowSurface] Failed to create window surface");
