@@ -1,38 +1,39 @@
 #include "lve_camera.hpp"
 
+#include "glm/gtx/euler_angles.hpp"
+
 namespace lve {
 
 void LveCamera::setOrthographicProjection(float left, float right, float bottom, float top, float near, float far) {
   projectionMatrix = glm::orthoLH_ZO(left, right, bottom, top, near, far); // This one seems fine
-
-  // projectionMatrix = glm::mat4{1.0f};
-  // projectionMatrix[0][0] = 2.f / (right - left);
-  // projectionMatrix[1][1] = 2.f / (bottom - top);
-  // projectionMatrix[2][2] = 1.f / (far - near);
-  // projectionMatrix[3][0] = -(right + left) / (right - left);
-  // projectionMatrix[3][1] = -(bottom + top) / (bottom - top);
-  // projectionMatrix[3][2] = -near / (far - near);
 }
 
 void LveCamera::setPerspectiveProjection(float fovy, float aspect, float near, float far) {
-  // NOTE: The function blowe requires flipping the Y afterward,
-  // but that changes winding order of vertices,
-  // which requires change it in rasterization config
-  //
-  // projectionMatrix = glm::perspectiveLH_ZO(fovy, aspect, near, far);
-  //
+  projectionMatrix = glm::perspectiveLH_ZO(fovy, aspect, near, far);
+}
 
-  const float tanHalfFovy = tan(fovy / 2.f);
-  projectionMatrix = glm::mat4{0.0f};
-  projectionMatrix[0][0] = 1.f / (aspect * tanHalfFovy);
-  projectionMatrix[1][1] = 1.f / (tanHalfFovy);
-  projectionMatrix[2][2] = far / (far - near);
-  projectionMatrix[2][3] = 1.f;
-  projectionMatrix[3][2] = -(far * near) / (far - near);
+void LveCamera::setViewDirection(vec3 position, vec3 dir, vec3 up) {
+  viewMatrix = glm::lookAtLH(position, position + dir, up);
+}
+
+void LveCamera::setViewTarget(vec3 position, vec3 target, vec3 up) {
+  viewMatrix = glm::lookAtLH(position, target, up);
+}
+
+void LveCamera::setViewYXZ(vec3 position, vec3 rotation) {
+  mat4 rot = glm::eulerAngleYXZ(rotation.y, rotation.x, rotation.z);
+  mat4 invRot = glm::transpose(rot);
+  mat4 invTrans = glm::translate(mat4(1.f), position);
+
+  viewMatrix = invRot * invTrans;
 }
 
 const mat4& LveCamera::getProjectioinMatrix() const {
   return projectionMatrix;
+}
+
+const mat4& LveCamera::getViewMatrix() const {
+  return viewMatrix;
 }
 
 } // namespace lve

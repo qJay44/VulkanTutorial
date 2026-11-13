@@ -75,13 +75,18 @@ FirstApp::~FirstApp() {}
 void FirstApp::run() {
   SimpleRenderSystem simpleRenderSystem(lveDevice, lveRenderer.getSwapChainRenderPass());
   LveCamera camera{};
+  // camera.setViewDirection(vec3(0.f), glm::normalize(vec3(0.5f, 0.f, 1.f)));
+  // camera.setViewTarget(vec3(-1.f, -2.f, 2.f), vec3(0.f, 0.f, 2.5f));
 
+  size_t i = 0;
   while (!lveWindow.shouldClose()) {
     glfwPollEvents();
 
+    float a = glm::pi<float>() * fabs(sin(i++ * 0.0005f)) * 0.1f;
     float aspect = lveRenderer.getAspectRatio();
     // camera.setOrthographicProjection(-aspect, aspect, 1, -1, -1, 1);
     camera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 10.f);
+    camera.setViewYXZ(vec3(-0.f, -0.f, 0.f), vec3(a, 0, 0));
 
     if (auto commandBuffer = lveRenderer.beginFrame()) {
       // ----- Update system ----------------------------------------------------------------------------------------------------------- //
