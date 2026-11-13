@@ -14,7 +14,12 @@ public:
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
   };
 
-  LveModel(LveDevice& device, const std::vector<Vertex>& vertices);
+  struct Data {
+    std::vector<Vertex> vertices{};
+    std::vector<u32> indices{};
+  };
+
+  LveModel(LveDevice& device, const Data& data);
   ~LveModel();
 
   LveModel(const LveModel&) = delete;
@@ -25,12 +30,20 @@ public:
 
 private:
   LveDevice& lveDevice;
+
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
   u32 vertexCount;
 
+  // TODO: Implement std::variant?
+  bool hasIndexBuffer = false;
+  VkBuffer indexBuffer;
+  VkDeviceMemory indexBufferMemory;
+  u32 indexCount;
+
 private:
   void createVertexBuffers(const std::vector<Vertex>& vertices);
+  void createIndexBuffer(const std::vector<u32>& indices);
 };
 
 } // namespace lve
