@@ -9,15 +9,23 @@ public:
   struct Vertex {
     vec3 position;
     vec3 color{};
+    vec3 normal{};
+    vec2 uv{};
 
     static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+
+    bool operator==(const Vertex& rhs) const;
   };
 
   struct Data {
     std::vector<Vertex> vertices{};
     std::vector<u32> indices{};
+
+    void loadFromOBJ(const fspath& path);
   };
+
+  static std::unique_ptr<LveModel> createModelFromOBJ(LveDevice& device, const fspath& path);
 
   LveModel(LveDevice& device, const Data& data);
   ~LveModel();

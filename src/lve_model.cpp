@@ -1,5 +1,21 @@
 #include "lve_model.hpp"
 
+#include "lve_utils.hpp"
+#include "glm/gtx/hash.hpp"
+#include "tiny_obj_loader.h"
+
+namespace {
+
+struct VertexHash {
+  size_t operator()(lve::LveModel::Vertex const& vertex) const {
+    size_t seed = 0;
+    lve::hashCombine(seed, vertex.position, vertex.color, vertex.normal, vertex.uv);
+    return seed;
+  }
+};
+
+} // namespace
+
 namespace lve {
 
 std::vector<VkVertexInputBindingDescription> LveModel::Vertex::getBindingDescriptions() {
@@ -12,7 +28,7 @@ std::vector<VkVertexInputBindingDescription> LveModel::Vertex::getBindingDescrip
 }
 
 std::vector<VkVertexInputAttributeDescription> LveModel::Vertex::getAttributeDescriptions() {
-  std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+  std::vector<VkVertexInputAttributeDescription> attributeDescriptions(4);
   attributeDescriptions[0].binding = 0;
   attributeDescriptions[0].location = 0;
   attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -23,7 +39,99 @@ std::vector<VkVertexInputAttributeDescription> LveModel::Vertex::getAttributeDes
   attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
   attributeDescriptions[1].offset = offsetof(Vertex, color);
 
+  attributeDescriptions[2].binding = 0;
+  attributeDescriptions[2].location = 2;
+  attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attributeDescriptions[2].offset = offsetof(Vertex, normal);
+
+  attributeDescriptions[3].binding = 0;
+  attributeDescriptions[3].location = 3;
+  attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+  attributeDescriptions[3].offset = offsetof(Vertex, uv);
+
   return attributeDescriptions;
+}
+
+bool LveModel::Vertex::operator==(const Vertex& rhs) const {
+  return
+    position == rhs.position &&
+    color    == rhs.color    &&
+    normal   == rhs.normal   &&
+    uv       == rhs.uv;
+}
+
+void LveModel::Data::loadFromOBJ(const fspath& path) {
+  const auto& pathStr = path.string();
+
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+  std::string warn, err;
+
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, pathStr.c_str()))
+    error("[LveModel::Data::loadFromOBJ] Can't load object [{}]\n\nWarning: [{}]\n\nError: [{}]", pathStr, warn, err);
+
+  vertices.clear();
+  indices.clear();
+
+  std::unordered_map<Vertex, u32, VertexHash> uniqueVertices;
+
+  for (const auto& shape : shapes) {
+    for (const auto& index : shape.mesh.indices) {
+      Vertex vertex{};
+
+      if (index.vertex_index >= 0) {
+        vertex.position = {
+          attrib.vertices[3 * index.vertex_index + 0],
+          attrib.vertices[3 * index.vertex_index + 1],
+          attrib.vertices[3 * index.vertex_index + 2],
+        };
+
+        size_t colorIndex = 3 * index.vertex_index + 2;
+
+        if (colorIndex < attrib.colors.size()) {
+          vertex.color = {
+            attrib.colors[colorIndex - 2],
+            attrib.colors[colorIndex - 1],
+            attrib.colors[colorIndex - 0],
+          };
+        } else {
+          vertex.color = vec3(1.f);
+        }
+      }
+
+      if (index.normal_index >= 0) {
+        vertex.normal = {
+          attrib.normals[3 * index.normal_index + 0],
+          attrib.normals[3 * index.normal_index + 1],
+          attrib.normals[3 * index.normal_index + 2],
+        };
+      }
+
+      if (index.texcoord_index >= 0) {
+        vertex.uv = {
+          attrib.texcoords[2 * index.texcoord_index + 0],
+          attrib.texcoords[2 * index.texcoord_index + 1],
+        };
+      }
+
+      auto [it, inserted] = uniqueVertices.try_emplace(vertex, vertices.size());
+
+      if (inserted)
+        vertices.push_back(vertex);
+
+      indices.push_back(it->second);
+    }
+  }
+
+  dprint("\n[LveModel::Data::loadFromOBJ] Model [{}]\nVertices: [{}]\nIndices: [{}]\n", pathStr, vertices.size(), indices.size());
+}
+
+std::unique_ptr<LveModel> LveModel::createModelFromOBJ(LveDevice& device, const fspath& path) {
+  Data data{};
+  data.loadFromOBJ(path);
+
+  return std::make_unique<LveModel>(device, data);
 }
 
 LveModel::LveModel(LveDevice& device, const Data& data) : lveDevice(device) {
