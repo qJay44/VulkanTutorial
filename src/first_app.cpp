@@ -68,6 +68,25 @@ std::unique_ptr<LveModel> createCubeModel(LveDevice& device, glm::vec3 offset) {
 } // namespace
 
 FirstApp::FirstApp() {
+  lveWindow.setCursorMoveCallback([&](double x, double y) {
+      auto extent = lveWindow.getExtent();
+      dvec2 mousePos{x, y};
+      dvec2 sensitivity{2.f};
+
+      dvec2 winSize{extent.width, extent.height};
+      dvec2 winCenter = winSize * 0.5;
+      dvec2 distFromCenter = mousePos - winCenter;
+
+      dvec2 delta = sensitivity * distFromCenter / winCenter;
+      viewerObject.transform.rotation.y += delta.x;
+      viewerObject.transform.rotation.x -= delta.y;
+
+      viewerObject.transform.rotation.y = glm::mod(viewerObject.transform.rotation.y, glm::two_pi<float>());
+      viewerObject.transform.rotation.x = glm::clamp(viewerObject.transform.rotation.x, -1.5f, 1.5f);
+  });
+
+  lveCamera.setViewTarget(vec3(-1.f, -2.f, 2.f), vec3(0.f, 0.f, 2.5f));
+
   loadGameObjects();
 }
 
@@ -77,10 +96,7 @@ void FirstApp::run() {
   using namespace std::chrono;
 
   SimpleRenderSystem simpleRenderSystem(lveDevice, lveRenderer.getSwapChainRenderPass());
-  LveCamera camera{};
-  camera.setViewTarget(vec3(-1.f, -2.f, 2.f), vec3(0.f, 0.f, 2.5f));
 
-  auto viewerObject = LveGameObject::createGameObject();
   KeyboardMovementController cameraController{};
 
   auto currTime = high_resolution_clock::now();
@@ -88,15 +104,18 @@ void FirstApp::run() {
   while (!lveWindow.shouldClose()) {
     glfwPollEvents();
 
+    auto extent = lveWindow.getExtent();
+    glfwSetCursorPos(lveWindow.getGFLWwindow(), extent.width * 0.5f, extent.height * 0.5f);
+
     auto newTime = high_resolution_clock::now();
     float frameTime = duration<float, seconds::period>(newTime - currTime).count();
     currTime = newTime;
 
     cameraController.moveInPlainXZ(lveWindow.getGFLWwindow(), frameTime, viewerObject);
-    camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
+    lveCamera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
     float aspect = lveRenderer.getAspectRatio();
-    camera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 10.f);
+    lveCamera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 10.f);
 
     if (auto commandBuffer = lveRenderer.beginFrame()) {
       // ----- Update system ----------------------------------------------------------------------------------------------------------- //
@@ -109,7 +128,7 @@ void FirstApp::run() {
       // end offscreen shadow pass
 
       lveRenderer.beginSwapChainRenderPass(commandBuffer);
-      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects, camera);
+      simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects, lveCamera);
       lveRenderer.endSwapChainRenderPass(commandBuffer);
       lveRenderer.endFrame();
 

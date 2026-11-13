@@ -3,14 +3,14 @@
 
 ## NOTES:
 
-* Hand Coordinate System:
-Right (+x, +y, -z) - OpenGL
-Left  (+x, +y, +z) - Vulkan
+###### Hand Coordinate System:
+* Right (+x, +y, -z) - OpenGL
+* Left  (+x, +y, +z) - Vulkan
 
-* Depth (Z):
-\[-1, 1] - OpenGL
-\[ 0, 1] - Vulkan
+###### Depth (Z):
+* \[-1, 1] - OpenGL
+* \[ 0, 1] - Vulkan
 
-`gl_VertexID`    - only in OpenGL
-`gl_VertexIndex` - only in Vulkan
+* `gl_VertexID`    - only in OpenGL
+* `gl_VertexIndex` - only in Vulkan
 

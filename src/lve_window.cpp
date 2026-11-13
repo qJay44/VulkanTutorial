@@ -40,7 +40,10 @@ GLFWwindow* LveWindow::getGFLWwindow() const {
 void LveWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) {
   if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
     error("[LveWindow::createWindowSurface] Failed to create window surface");
+}
 
+void LveWindow::setCursorMoveCallback(std::function<void(double,double)>&& func) {
+  onCursorMove = std::move(func);
 }
 
 void LveWindow::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -50,6 +53,11 @@ void LveWindow::framebufferResizeCallback(GLFWwindow* window, int width, int hei
   lveWindow->height = height;
 }
 
+void LveWindow::cursorPosCallback(GLFWwindow* window, double x, double y) {
+  auto lveWindow = reinterpret_cast<LveWindow*>(glfwGetWindowUserPointer(window));
+  lveWindow->onCursorMove(x, y);
+}
+
 void LveWindow::initWindow() {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -57,7 +65,10 @@ void LveWindow::initWindow() {
 
   window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr);
   glfwSetWindowUserPointer(window, this);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  glfwSetCursorPos(window, width / 2.f, height / 2.f);
   glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+  glfwSetCursorPosCallback(window, cursorPosCallback);
 }
 
 } // namespace lve

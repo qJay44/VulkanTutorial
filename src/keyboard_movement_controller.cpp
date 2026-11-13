@@ -21,15 +21,17 @@ void KeyboardMovementController::moveInPlainXZ(GLFWwindow* window, float dt, Lve
   vec3 upDir{0.f, -1.f, 0.f};
 
   vec3 moveDir{0.f};
+  float finalSpeed = moveSpeed;
   if (glfwGetKey(window, keys.moveForward)  == GLFW_PRESS) moveDir +=  forwardDir;
   if (glfwGetKey(window, keys.moveBackward) == GLFW_PRESS) moveDir += -forwardDir;
   if (glfwGetKey(window, keys.moveRight)    == GLFW_PRESS) moveDir +=  rightDir;
   if (glfwGetKey(window, keys.moveLeft)     == GLFW_PRESS) moveDir += -rightDir;
   if (glfwGetKey(window, keys.moveUp)       == GLFW_PRESS) moveDir +=  upDir;
   if (glfwGetKey(window, keys.moveDown)     == GLFW_PRESS) moveDir += -upDir;
+  if (glfwGetKey(window, keys.speedUp)      == GLFW_PRESS) finalSpeed *= moveSpeedMult;
 
   if (glm::dot(moveDir, moveDir) > 1e-6f)
-    gameObject.transform.translation += moveSpeed * dt * glm::normalize(moveDir);
+    gameObject.transform.translation += finalSpeed * dt * glm::normalize(moveDir);
 }
 
 } // namespace lve

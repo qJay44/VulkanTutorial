@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lve_camera.hpp"
 #include "lve_game_object.hpp"
 #include "lve_renderer.hpp"
 #include "lve_window.hpp"
@@ -9,24 +10,24 @@ namespace lve {
 
 class FirstApp {
 public:
-  static constexpr int WINDOW_WIDTH  = 800;
-  static constexpr int WINDOW_HEIGHT = 600;
-  static constexpr std::string WINDOW_NAME = "MyProgram";
-
   FirstApp();
   ~FirstApp();
 
   FirstApp(const FirstApp&) = delete;
   FirstApp& operator=(const FirstApp&) = delete;
 
+  void onMouseMove(GLFWwindow* window, double x, double y);
+
   void run();
 
 private:
-  LveWindow lveWindow{WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME};
+  LveWindow lveWindow{1600, 900, "MyProgram"};
   LveDevice lveDevice{lveWindow};
   LveRenderer lveRenderer{lveWindow, lveDevice};
+  LveCamera lveCamera{};
 
   std::vector<LveGameObject> gameObjects;
+  LveGameObject viewerObject = LveGameObject::createGameObject();
 
 private:
   void loadGameObjects();
