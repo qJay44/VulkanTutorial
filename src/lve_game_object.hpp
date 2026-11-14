@@ -10,6 +10,7 @@ struct TransformComponent {
   vec3 rotation{};
 
   mat4 model() const;
+  mat3 normalMatrix() const;
 };
 
 class LveGameObject {

@@ -7,14 +7,12 @@ layout(location = 2) in vec2 v_uv;
 layout(location = 0) out vec4 FragColor;
 
 layout(push_constant) uniform Push {
-  mat4 transform;
-  vec3 color;
-} u;
+  mat4 transform; // proj * view * model
+  mat4 normalMatrix;
+} push;
 
 void main() {
-  const vec3 lightDir = normalize(vec3(0.f, 0.5f, 0.5f));
-  float diffuse = max(0.f, dot(v_normal, lightDir));
-  vec3 finalColor = v_color * diffuse;
+  vec3 finalColor = v_color;
 
   FragColor = vec4(finalColor, 1.f);
 }

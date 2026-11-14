@@ -4,9 +4,9 @@ namespace lve {
 
 struct SimplePushConstantData {
   mat4 transform{1.f};
-  alignas(16) vec3 color;
+  mat4 normalMatrix{1.f};
 };
-static_assert(sizeof(SimplePushConstantData) % 16 == 0);
+static_assert(sizeof(SimplePushConstantData) % 16 == 0 && sizeof(SimplePushConstantData) <= 128);
 
 SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPass) : lveDevice(device) {
   createPipelineLayout();
@@ -58,8 +58,8 @@ void SimpleRenderSystem::renderGameObjects(VkCommandBuffer commandBuffer, std::v
 
   for (auto& obj : gameObjects) {
     SimplePushConstantData push{};
-    push.color = obj.color;
     push.transform = projectionView * obj.transform.model();
+    push.normalMatrix = obj.transform.normalMatrix();
 
     vkCmdPushConstants(
         commandBuffer,
