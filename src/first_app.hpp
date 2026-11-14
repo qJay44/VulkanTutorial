@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lve_camera.hpp"
+#include "lve_descriptors.hpp"
 #include "lve_game_object.hpp"
 #include "lve_renderer.hpp"
 #include "lve_window.hpp"
@@ -26,6 +27,7 @@ private:
   LveRenderer lveRenderer{lveWindow, lveDevice};
   LveCamera lveCamera{};
 
+  std::unique_ptr<LveDescriptorPool> globalPool{};
   std::vector<LveGameObject> gameObjects;
   LveGameObject viewerObject = LveGameObject::createGameObject();
 

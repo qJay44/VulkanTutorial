@@ -7,7 +7,7 @@ layout(location = 2) in vec2 v_uv;
 layout(location = 0) out vec4 FragColor;
 
 layout(push_constant) uniform Push {
-  mat4 transform; // proj * view * model
+  mat4 modelMatrix; // proj * view * model
   mat4 normalMatrix;
 } push;
 
