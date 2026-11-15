@@ -34,6 +34,7 @@ using glm::mat2;
 #include "utils/types.hpp"
 
 // STL
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>

@@ -1,6 +1,7 @@
 #version 450
 
 #define LVE_MAX_LIGHTS 10 // TODO: Implement specialization constants
+#define PI 3.1415926538f
 
 layout(location = 0) in vec2 v_offset;
 
@@ -27,11 +28,13 @@ layout(push_constant) uniform Push {
 } push;
 
 void main() {
-  if (dot(v_offset, v_offset) >= 1.f)
+  float dist = dot(v_offset, v_offset);
+  if (dist >= 1.f)
     discard;
 
   vec3 finalColor = push.color.xyz;
+  float alpha = cos(PI * dist) * 0.5f + 0.5f;
 
-  FragColor = vec4(finalColor, 1.f);
+  FragColor = vec4(finalColor, alpha);
 }
 

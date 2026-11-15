@@ -15,6 +15,7 @@ public:
   const mat4& getProjectioinMatrix() const;
   const mat4& getViewMatrix() const;
   const mat4& getViewInvMatrix() const;
+  vec3 getPosition() const;
 
 private:
   mat4 projectionMatrix{1.f};

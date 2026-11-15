@@ -115,8 +115,10 @@ void FirstApp::run() {
       // end offscreen shadow pass
 
       lveRenderer.beginSwapChainRenderPass(commandBuffer);
+
       simpleRenderSystem.renderGameObjects(frameInfo);
       pointLightSystem.render(frameInfo);
+
       lveRenderer.endSwapChainRenderPass(commandBuffer);
       lveRenderer.endFrame();
 

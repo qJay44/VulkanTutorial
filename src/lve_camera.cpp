@@ -43,5 +43,9 @@ const mat4& LveCamera::getViewInvMatrix() const {
   return viewInvMatrix;
 }
 
+vec3 LveCamera::getPosition() const {
+  return vec3(viewInvMatrix[3]);
+}
+
 } // namespace lve
 

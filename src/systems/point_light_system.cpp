@@ -41,6 +41,8 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 
   PipelineConfigInfo pipelineConfigInfo{};
   LvePipeline::defaultPipelineConfigInfo(pipelineConfigInfo);
+  LvePipeline::enableAlphaBlending(pipelineConfigInfo);
+
   pipelineConfigInfo.bindingDescriptions.clear();
   pipelineConfigInfo.bindingAttributes.clear();
   pipelineConfigInfo.renderPass = renderPass;
@@ -81,6 +83,20 @@ void PointLightSystem::update(FrameInfo& frameInfo, GlobalUbo& ubo) {
 }
 
 void PointLightSystem::render(FrameInfo& frameInfo) {
+  std::vector<std::pair<float, LveGameObject::id_t>> lightObjects;
+  lightObjects.reserve(LVE_MAX_LIGHTS);
+
+  for (const auto& [id, obj] : frameInfo.gameObjects) {
+    if (!obj.pointLight)
+      continue;
+
+    vec3 offset = frameInfo.camera.getPosition() - obj.transform.translation;
+    float distSq = glm::dot(offset, offset);
+
+    lightObjects.emplace_back(-distSq, obj.getId());
+  }
+
+  std::ranges::sort(lightObjects);
   lvePipeline->bind(frameInfo.commandBuffer);
 
   vkCmdBindDescriptorSets(
@@ -94,9 +110,8 @@ void PointLightSystem::render(FrameInfo& frameInfo) {
     nullptr
   );
 
-  for (auto& [id, obj] : frameInfo.gameObjects) {
-    if (!obj.pointLight)
-      continue;
+  for (const auto& [_, id] : lightObjects) {
+    const auto& obj = frameInfo.gameObjects.at(id);
 
     PointLightConstants push{};
     push.position = vec4(obj.transform.translation, 1.f);
