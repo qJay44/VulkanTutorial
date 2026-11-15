@@ -17,6 +17,7 @@ struct PointLight {
 layout(set = 0, binding = 0) uniform GlobalUbo {
   mat4 proj;
   mat4 view;
+  mat4 viewInv;
   vec4 lightAmbientColor;
   PointLight pointLights[LVE_MAX_LIGHTS];
   int numLights;
@@ -28,24 +29,30 @@ layout(push_constant) uniform Push {
 } push;
 
 void main() {
+  vec3 camPos = ubo.viewInv[3].xyz;
   vec3 N = normalize(v_worldNormal);
+  vec3 V = normalize(camPos - v_worldPos);
   vec3 lightAmbientColor = ubo.lightAmbientColor.xyz * ubo.lightAmbientColor.w;
   vec3 Lo = lightAmbientColor;
+  vec3 specularColor = vec3(0.f);
 
   for (int i = 0; i < ubo.numLights; i++) {
     PointLight light = ubo.pointLights[i];
     vec3 lightVec = light.position.xyz - v_worldPos;
     vec3 L = normalize(lightVec);
+    vec3 H = normalize(L + V);
     float attenuation = 1.f / dot(lightVec, lightVec);
     float NdotL = max(0.f, dot(N, L));
+    float NdotH = max(0.f, dot(N, H));
 
     vec3 lightColor = light.color.xyz * light.color.w * attenuation;
     vec3 diffuseColor = lightColor * NdotL;
 
     Lo += diffuseColor;
+    specularColor += lightColor * pow(NdotH, 512.f);
   }
 
-  vec3 finalColor = Lo * v_color;
+  vec3 finalColor = (Lo + specularColor) * v_color;
 
   FragColor = vec4(finalColor, 1.f);
 }

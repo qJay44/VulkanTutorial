@@ -15,6 +15,7 @@ struct PointLight {
 struct GlobalUbo {
   mat4 proj{1.f};
   mat4 view{1.f};
+  mat4 viewInv{1.f};
   vec4 lightAmbientColor{1.f, 1.f, 1.f, 0.02f}; // w - intensity
   PointLight pointLights[LVE_MAX_LIGHTS];
   int numLights;

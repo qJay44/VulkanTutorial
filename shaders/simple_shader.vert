@@ -20,6 +20,7 @@ struct PointLight {
 layout(set = 0, binding = 0) uniform GlobalUbo {
   mat4 proj;
   mat4 view;
+  mat4 viewInv;
   vec4 lightAmbientColor;
   PointLight pointLights[LVE_MAX_LIGHTS];
   int numLights;

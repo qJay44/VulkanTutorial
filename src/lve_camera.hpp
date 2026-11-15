@@ -14,10 +14,12 @@ public:
 
   const mat4& getProjectioinMatrix() const;
   const mat4& getViewMatrix() const;
+  const mat4& getViewInvMatrix() const;
 
 private:
   mat4 projectionMatrix{1.f};
   mat4 viewMatrix{1.f};
+  mat4 viewInvMatrix{1.f};
 };
 
 } // namespace lve

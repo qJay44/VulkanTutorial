@@ -14,10 +14,12 @@ void LveCamera::setPerspectiveProjection(float fovy, float aspect, float near, f
 
 void LveCamera::setViewDirection(vec3 position, vec3 dir, vec3 up) {
   viewMatrix = glm::lookAtLH(position, position + dir, up);
+  viewInvMatrix = glm::inverse(viewMatrix);
 }
 
 void LveCamera::setViewTarget(vec3 position, vec3 target, vec3 up) {
   viewMatrix = glm::lookAtLH(position, target, up);
+  viewInvMatrix = glm::inverse(viewMatrix);
 }
 
 void LveCamera::setViewYXZ(vec3 position, vec3 rotation) {
@@ -26,6 +28,7 @@ void LveCamera::setViewYXZ(vec3 position, vec3 rotation) {
   mat4 invTrans = glm::translate(mat4(1.f), -position);
 
   viewMatrix = invRot * invTrans;
+  viewInvMatrix = glm::inverse(viewMatrix);
 }
 
 const mat4& LveCamera::getProjectioinMatrix() const {
@@ -34,6 +37,10 @@ const mat4& LveCamera::getProjectioinMatrix() const {
 
 const mat4& LveCamera::getViewMatrix() const {
   return viewMatrix;
+}
+
+const mat4& LveCamera::getViewInvMatrix() const {
+  return viewInvMatrix;
 }
 
 } // namespace lve
