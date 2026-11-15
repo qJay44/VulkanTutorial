@@ -1,7 +1,6 @@
 #pragma once
 
 #include "lve_frame_info.hpp"
-#include "lve_game_object.hpp"
 #include "lve_pipeline.hpp"
 #include "lve_device.hpp"
 
@@ -15,7 +14,7 @@ public:
   SimpleRenderSystem(const SimpleRenderSystem&) = delete;
   SimpleRenderSystem& operator=(const SimpleRenderSystem&) = delete;
 
-  void renderGameObjects(FrameInfo& frameInfo, std::vector<LveGameObject>& gameObjects);
+  void renderGameObjects(FrameInfo& frameInfo);
 
 private:
   LveDevice& lveDevice;
