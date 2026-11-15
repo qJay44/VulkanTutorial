@@ -1,5 +1,7 @@
 #version 450
 
+#define LVE_MAX_LIGHTS 10 // TODO: Implement specialization constants
+
 const vec2 OFFSETS[6] = vec2[](
   vec2(-1.f, -1.f),
   vec2(-1.f,  1.f),
@@ -9,21 +11,25 @@ const vec2 OFFSETS[6] = vec2[](
   vec2( 1.f,  1.f)
 );
 
-const float LIGHT_RADIUS = 0.05f;
-
 layout(location = 0) out vec2 v_offset;
+
+struct PointLight {
+  vec4 position; // ignore w
+  vec4 color; // w - intensity
+};
 
 layout(set = 0, binding = 0) uniform GlobalUbo {
   mat4 proj;
   mat4 view;
   vec4 lightAmbientColor;
-  vec3 lightPos;
-  vec4 lightColor;
+  PointLight pointLights[LVE_MAX_LIGHTS];
+  int numLights;
 } ubo;
 
 layout(push_constant) uniform Push {
-  mat4 modelMatrix; // proj * view * model
-  mat4 normalMatrix;
+  vec4 position;
+  vec4 color;
+  float radius;
 } push;
 
 void main() {
@@ -31,9 +37,9 @@ void main() {
   vec3 camRight = {ubo.view[0][0], ubo.view[1][0], ubo.view[2][0]};
   vec3 camUp    = {ubo.view[0][1], ubo.view[1][1], ubo.view[2][1]};
 
-  vec3 worldPos = ubo.lightPos +
-    LIGHT_RADIUS * offset.x * camRight +
-    LIGHT_RADIUS * offset.y * camUp;
+  vec3 worldPos = push.position.xyz +
+    push.radius * offset.x * camRight +
+    push.radius * offset.y * camUp;
 
   gl_Position = ubo.proj * ubo.view * vec4(worldPos, 1.f);
 

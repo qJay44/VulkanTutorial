@@ -66,6 +66,16 @@ LveGameObject LveGameObject::createGameObject() {
   return LveGameObject(currentId++);
 }
 
+LveGameObject LveGameObject::makePointLight(float intensity, float radius, vec3 color) {
+  LveGameObject obj = LveGameObject::createGameObject();
+  obj.color = color;
+  obj.transform.scale.x = radius;
+  obj.pointLight = std::make_unique<PointLightComponent>();
+  obj.pointLight->lightIntensity = intensity;
+
+  return obj;
+}
+
 id_t LveGameObject::getId() const {
   return id;
 }

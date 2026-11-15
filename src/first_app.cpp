@@ -6,14 +6,6 @@
 
 namespace lve {
 
-struct GlobalUbo {
-  mat4 proj{1.f};
-  mat4 view{1.f};
-  vec4 lightAmbientColor{1.f, 1.f, 1.f, 0.02f}; // w - intensity
-  vec3 lightPos{-1.f};
-  alignas(16) vec4 lightColor{1.f}; // w - light intensity
-};
-
 FirstApp::FirstApp() {
   lveWindow.setCursorMoveCallback([&](double x, double y) {
     auto extent = lveWindow.getExtent();
@@ -110,6 +102,8 @@ void FirstApp::run() {
       GlobalUbo ubo{};
       ubo.proj = lveCamera.getProjectioinMatrix();
       ubo.view = lveCamera.getViewMatrix();
+      pointLightSystem.update(frameInfo, ubo);
+
       uboBuffers[frameIndex]->writeToBuffer(&ubo);
       uboBuffers[frameIndex]->flush();
 
@@ -153,6 +147,29 @@ void FirstApp::loadGameObjects() {
   floor.transform.translation = {0.f, 0.5f, 0.f};
   floor.transform.scale = vec3(3.f, 1.f, 3.f);
   gameObjects.emplace(floor.getId(), std::move(floor));
+
+  std::vector<vec3> lightColors = {
+    {1.0f, 0.1f, 0.1f},
+    {0.1f, 0.1f, 1.0f},
+    {0.1f, 1.0f, 0.1f},
+    {1.0f, 1.0f, 0.1f},
+    {0.1f, 1.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f},
+  };
+
+  for (size_t i = 0; i < lightColors.size(); i++) {
+    auto rotateLight = glm::rotate(
+      mat4(1.f),
+      (glm::two_pi<float>() / lightColors.size()) * i,
+      {0.f, -1.f, 0.f}
+    );
+
+    auto pointLight = LveGameObject::makePointLight(0.2f);
+    pointLight.color = lightColors[i];
+    pointLight.transform.translation = vec3(rotateLight * vec4(vec3(-1.f), 1.f));
+
+    gameObjects.emplace(pointLight.getId(), std::move(pointLight));
+  }
 }
 
 } // namespace lve
