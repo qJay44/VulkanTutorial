@@ -1,12 +1,14 @@
 #include "first_app.hpp"
 
 #include "keyboard_movement_controller.hpp"
-#include "simple_render_system.hpp"
+#include "systems/point_light_system.hpp"
+#include "systems/simple_render_system.hpp"
 
 namespace lve {
 
 struct GlobalUbo {
-  mat4 projectionView{1.f};
+  mat4 proj{1.f};
+  mat4 view{1.f};
   vec4 lightAmbientColor{1.f, 1.f, 1.f, 0.02f}; // w - intensity
   vec3 lightPos{-1.f};
   alignas(16) vec4 lightColor{1.f}; // w - light intensity
@@ -71,6 +73,8 @@ void FirstApp::run() {
   }
 
   SimpleRenderSystem simpleRenderSystem(lveDevice, lveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout());
+  PointLightSystem pointLightSystem(lveDevice, lveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout());
+
   KeyboardMovementController cameraController{};
   auto currTime = high_resolution_clock::now();
 
@@ -88,7 +92,7 @@ void FirstApp::run() {
     lveCamera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
     float aspect = lveRenderer.getAspectRatio();
-    lveCamera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 10.f);
+    lveCamera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 100.f);
 
     if (auto commandBuffer = lveRenderer.beginFrame()) {
       int frameIndex = lveRenderer.getFrameIndex();
@@ -104,7 +108,8 @@ void FirstApp::run() {
       // ----- Update ------------------------------------------------------------------------------------------------------------------ //
 
       GlobalUbo ubo{};
-      ubo.projectionView = lveCamera.getProjectioinMatrix() * lveCamera.getViewMatrix();
+      ubo.proj = lveCamera.getProjectioinMatrix();
+      ubo.view = lveCamera.getViewMatrix();
       uboBuffers[frameIndex]->writeToBuffer(&ubo);
       uboBuffers[frameIndex]->flush();
 
@@ -116,6 +121,7 @@ void FirstApp::run() {
 
       lveRenderer.beginSwapChainRenderPass(commandBuffer);
       simpleRenderSystem.renderGameObjects(frameInfo);
+      pointLightSystem.render(frameInfo);
       lveRenderer.endSwapChainRenderPass(commandBuffer);
       lveRenderer.endFrame();
 
