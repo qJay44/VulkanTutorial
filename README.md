@@ -11,6 +11,7 @@
 * \[-1, 1] - OpenGL
 * \[ 0, 1] - Vulkan
 
+###### Shaders:
 * `gl_VertexID`    - only in OpenGL
 * `gl_VertexIndex` - only in Vulkan
 
