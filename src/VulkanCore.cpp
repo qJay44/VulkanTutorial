@@ -43,7 +43,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
   message += "\tObjects:\n";
   for (u32 i = 0; i < pCallbackData->objectCount; i++) {
-    message += std::format("\t\t[{}]\n", pCallbackData->pObjects[i].objectHandle);
+    message += std::format("\t[{}]\n", pCallbackData->pObjects[i].objectHandle);
   }
   message += "\n";
 
@@ -66,9 +66,14 @@ VulkanCore::~VulkanCore() {
 }
 
 void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
+  m_window = window;
+
   createInstance(appName);
   createDebugMessageCallback();
   createSurface(window);
+
+  m_physDevices.init(m_instance, m_surface);
+  m_queueFamily = m_physDevices.selectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 }
 
 void VulkanCore::createInstance(const std::string& appName) {
@@ -108,13 +113,18 @@ void VulkanCore::createInstance(const std::string& appName) {
     .pNext = nullptr,
     .flags = 0,
     .pApplicationInfo = &appInfo,
+#ifdef NDEBUG
     .enabledLayerCount = static_cast<u32>(layers.size()),
     .ppEnabledLayerNames = layers.data(),
+#else
+    .enabledLayerCount = 0,
+    .ppEnabledLayerNames = nullptr,
+#endif
     .enabledExtensionCount = static_cast<u32>(extensions.size()),
     .ppEnabledExtensionNames = extensions.data()
   };
 
-  VkResult res = vkCreateInstance(&createInfo, nullptr, &instance);
+  VkResult res = vkCreateInstance(&createInfo, nullptr, &m_instance);
   CHECK_VK_RESULT(res, "vkCreateInstance");
   dprint("Created instance");
 }
@@ -140,38 +150,38 @@ void VulkanCore::createDebugMessageCallback() {
     .pUserData = nullptr,
   };
 
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-  VkResult res = func ? func(instance, &createInfo, nullptr, &debugMessenger) : VK_ERROR_EXTENSION_NOT_PRESENT;
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
+  VkResult res = func ? func(m_instance, &createInfo, nullptr, &m_debugMessenger) : VK_ERROR_EXTENSION_NOT_PRESENT;
   CHECK_VK_RESULT(res, "[VulkanCore::createDebugMessageCallback] Failed to set up debug messenger");
   dprint("Debug utils created");
 }
 
 void VulkanCore::createSurface(GLFWwindow* window) {
-  VkResult res = glfwCreateWindowSurface(instance, window, nullptr, &surface);
+  VkResult res = glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface);
   CHECK_VK_RESULT(res, "[VulkanCore::createSurface] Can't create GLFW window surface");
   dprint("GLFW window surface created");
 }
 
 void VulkanCore::destroySurface() {
-  auto func = (PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(instance, "vkDestroySurfaceKHR");
+  auto func = (PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkDestroySurfaceKHR");
   if (!func)
     error("[VulkanCore::destroySurface] Can't find address of the function");
 
-  func(instance, surface, nullptr); // Or vkDestroySurfaceKHR(instance, surface, nullptr);
+  func(m_instance, m_surface, nullptr); // Or vkDestroySurfaceKHR(instance, surface, nullptr);
   dprint("GLFW window surface destroyed");
 }
 
 void VulkanCore::destroyInstance() {
-  vkDestroyInstance(instance, nullptr);
+  vkDestroyInstance(m_instance, nullptr);
   dprint("Vulkan instance destroyed");
 }
 
 void VulkanCore::destroyDebugMessageCallback() {
-  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
   if (!func)
     error("[VulkanCore::destroyDebugMessageCallback] Can't find address of the function");
 
-  func(instance, debugMessenger, nullptr);
+  func(m_instance, m_debugMessenger, nullptr);
   dprint("Vulkan instance destroyed");
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VulkanPhysicalDevices.hpp"
+
 namespace lve {
 
 class VulkanCore {
@@ -10,9 +12,12 @@ public:
   void init(const std::string& appName, GLFWwindow* window);
 
 private:
-  VkInstance instance = VK_NULL_HANDLE;
-  VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-  VkSurfaceKHR surface;
+  VkInstance m_instance = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
+  GLFWwindow* m_window = nullptr;
+  VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+  VulkanPhysicalDevices m_physDevices;
+  u32 m_queueFamily = 0;
 
 private:
   void createInstance(const std::string& appName);
