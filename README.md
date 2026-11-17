@@ -1,5 +1,5 @@
 ## Sources
-* https://www.youtube.com/playlist?list=PL8327DO66nu9qYVKLDmdLW_84-yE4auCR
+* https://www.youtube.com/playlist?list=PLA0dXqQjCx0RntJy1pqje9uHRF1Z5vZgA
 
 ## NOTES:
 

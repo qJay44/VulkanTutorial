@@ -1,3 +1,5 @@
+#include "VulkanApp.hpp"
+
 void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -22,7 +24,11 @@ int main() {
 
   glfwSetKeyCallback(window, GLFW_KeyCallback);
 
+  lve::VulkanApp app;
+  app.init("VulkanApp");
+
   while (!glfwWindowShouldClose(window)) {
+    app.render();
     glfwPollEvents();
   }
 
