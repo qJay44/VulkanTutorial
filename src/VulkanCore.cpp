@@ -60,13 +60,15 @@ VulkanCore::VulkanCore() {
 }
 
 VulkanCore::~VulkanCore() {
+  destroySurface();
   destroyDebugMessageCallback();
   destroyInstance();
 }
 
-void VulkanCore::init(const std::string& appName) {
+void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createInstance(appName);
   createDebugMessageCallback();
+  createSurface(window);
 }
 
 void VulkanCore::createInstance(const std::string& appName) {
@@ -84,8 +86,8 @@ void VulkanCore::createInstance(const std::string& appName) {
     "VK_KHR_macos_surface"
     #endif // __APPLE__
     #ifdef __linux__
-    "VK_KHR_xcb_surface",
-    // "VK_KHR_wayland_surface"
+    // "VK_KHR_xcb_surface",
+    "VK_KHR_wayland_surface",
     #endif // __linux__
 
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
@@ -144,6 +146,21 @@ void VulkanCore::createDebugMessageCallback() {
   dprint("Debug utils created");
 }
 
+void VulkanCore::createSurface(GLFWwindow* window) {
+  VkResult res = glfwCreateWindowSurface(instance, window, nullptr, &surface);
+  CHECK_VK_RESULT(res, "[VulkanCore::createSurface] Can't create GLFW window surface");
+  dprint("GLFW window surface created");
+}
+
+void VulkanCore::destroySurface() {
+  auto func = (PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(instance, "vkDestroySurfaceKHR");
+  if (!func)
+    error("[VulkanCore::destroySurface] Can't find address of the function");
+
+  func(instance, surface, nullptr); // Or vkDestroySurfaceKHR(instance, surface, nullptr);
+  dprint("GLFW window surface destroyed");
+}
+
 void VulkanCore::destroyInstance() {
   vkDestroyInstance(instance, nullptr);
   dprint("Vulkan instance destroyed");
@@ -152,7 +169,7 @@ void VulkanCore::destroyInstance() {
 void VulkanCore::destroyDebugMessageCallback() {
   auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
   if (!func)
-    error("[VulkanCore::destroyDebugMessageCallback] Failed to destroy debug messenger");
+    error("[VulkanCore::destroyDebugMessageCallback] Can't find address of the function");
 
   func(instance, debugMessenger, nullptr);
   dprint("Vulkan instance destroyed");

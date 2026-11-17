@@ -5,8 +5,8 @@ namespace lve {
 VulkanApp::VulkanApp() {}
 VulkanApp::~VulkanApp() {}
 
-void VulkanApp::init(const char* appName) {
-  core.init(appName);
+void VulkanApp::init(const char* appName, GLFWwindow* window) {
+  core.init(appName, window);
 }
 
 void VulkanApp::render() {

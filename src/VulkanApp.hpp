@@ -9,7 +9,7 @@ public:
   VulkanApp();
   ~VulkanApp();
 
-  void init(const char* appName);
+  void init(const char* appName, GLFWwindow* window);
   void render();
 
 private:

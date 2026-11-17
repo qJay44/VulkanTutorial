@@ -25,7 +25,7 @@ int main() {
   glfwSetKeyCallback(window, GLFW_KeyCallback);
 
   lve::VulkanApp app;
-  app.init("VulkanApp");
+  app.init("VulkanApp", window);
 
   while (!glfwWindowShouldClose(window)) {
     app.render();
