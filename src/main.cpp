@@ -1,14 +1,33 @@
-#include "first_app.hpp"
-#include "utils/utils.hpp"
+void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+  (void)scancode;
+  (void)mods;
+}
 
 int main() {
-  lve::FirstApp app{};
+  if (!glfwInit())
+    error("[main.cpp] Can't initialize GLFW");
 
-  try {
-    app.run();
-  } catch (std::exception& e) {
-    error("[main.cpp]:\n{}", e.what());
+  if (!glfwVulkanSupported())
+    error("[main.cpp] Current GLFW doesn't support Vulkan");
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+  GLFWwindow* window = glfwCreateWindow(1600, 900, "MyProgram", nullptr, nullptr);
+  if (!window)
+    error("[main.cpp] Didn't create window");
+
+  glfwSetKeyCallback(window, GLFW_KeyCallback);
+
+  while (!glfwWindowShouldClose(window)) {
+    glfwPollEvents();
   }
+
+  glfwDestroyWindow(window);
+  glfwTerminate();
 
   return EXIT_SUCCESS;
 }
