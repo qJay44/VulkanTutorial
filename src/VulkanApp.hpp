@@ -18,12 +18,14 @@ private:
   VulkanQueue* m_pQueue = nullptr;
   u32 m_numImages = 0;
   std::vector<VkCommandBuffer> m_cmdBufs;
+  VkRenderPass m_renderPass;
+  std::vector<VkFramebuffer> m_framebuffers;
 
 private:
   ~VulkanApp() = default;
 
   void createCommandBuffers();
-  void recordCommandBuffers();
+  void recordCommandBuffers(VkExtent2D windowExtent);
 };
 
 } // namespace lve

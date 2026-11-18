@@ -7,7 +7,7 @@
 inline VkExtent2D GetWindowExtent(GLFWwindow* window) {
   int width, height;
   VkExtent2D windowExtent{};
-  glfwGetFramebufferSize(window, &width, &height);
+  glfwGetWindowSize(window, &width, &height);
 
   windowExtent.width = static_cast<u32>(width);
   windowExtent.height = static_cast<u32>(height);

@@ -15,6 +15,7 @@ int main() {
   if (!glfwVulkanSupported())
     error("[main.cpp] Current GLFW doesn't support Vulkan");
 
+  // NOTE: Hyprland currently resizing window which calls current swapchain validation error
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 

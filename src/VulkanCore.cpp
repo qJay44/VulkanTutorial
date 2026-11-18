@@ -140,6 +140,7 @@ VkImageView CreateImageView(
 VulkanCore::~VulkanCore() {
   vkDeviceWaitIdle(m_device);
 
+  destroyFramebuffers();
   destroyQueue();
   destroyCommandBufferPool();
   destroySwapchain();
@@ -167,6 +168,105 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createQueue();
 }
 
+VkRenderPass VulkanCore::createSimpleRenderPass() {
+  VkAttachmentDescription attachDesc{
+    .flags = 0,
+    .format = m_swapchainSurfaceFormat.format,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  };
+
+  VkAttachmentReference attachRef{
+    .attachment = 0,
+    .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  };
+
+  VkSubpassDescription subpassDesc{
+    .flags = 0,
+    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .inputAttachmentCount = 0,
+    .pInputAttachments = nullptr,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &attachRef,
+    .pResolveAttachments = nullptr,
+    .pDepthStencilAttachment = nullptr,
+    .preserveAttachmentCount = 0,
+    .pPreserveAttachments = nullptr,
+  };
+
+  VkRenderPassCreateInfo renderPassCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .attachmentCount = 1,
+    .pAttachments = &attachDesc,
+    .subpassCount = 1,
+    .pSubpasses = &subpassDesc,
+    .dependencyCount = 0,
+    .pDependencies = nullptr,
+  };
+
+  VkRenderPass renderPass;
+
+  VkResult res = vkCreateRenderPass(m_device, &renderPassCreateInfo, nullptr, &renderPass);
+  CHECK_VK_RESULT(res, "vkCreateRenderPass");
+  dprint("Created a simple render pass");
+
+  return renderPass;
+}
+
+std::vector<VkFramebuffer> VulkanCore::createFramebuffers(VkRenderPass renderPass) {
+  m_framebuffers.resize(m_images.size());
+
+  VkExtent2D windowExtent = GetWindowExtent(m_window);
+  VkResult res;
+
+  VkFramebufferCreateInfo fbCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .renderPass = renderPass,
+    .attachmentCount = 1,
+    .pAttachments = nullptr, // Assigned in the loop
+    .width = windowExtent.width,
+    .height = windowExtent.height,
+    .layers = 1,
+  };
+
+  for (size_t i = 0; i < m_images.size(); i++) {
+    fbCreateInfo.pAttachments = &m_imageViews[i],
+
+    res = vkCreateFramebuffer(m_device, &fbCreateInfo, nullptr, &m_framebuffers[i]);
+    CHECK_VK_RESULT(res, "vkCreateFramebuffer");
+  }
+
+  dprint("Created framebuffers");
+
+  return m_framebuffers;
+}
+
+void VulkanCore::createCommandBufferPool() {
+  VkCommandPoolCreateInfo cmdPoolCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .queueFamilyIndex = m_queueFamily
+  };
+
+  VkResult res = vkCreateCommandPool(m_device, &cmdPoolCreateInfo, nullptr, &m_cmdBufPool);
+  CHECK_VK_RESULT(res, "vkCreateCommandPool");
+  dprint("Created command buffer pool");
+}
+
+VkDevice& VulkanCore::getDevice() {
+  return m_device;
+}
+
 u32 VulkanCore::getNumImages() const {
   return static_cast<u32>(m_images.size());
 }
@@ -181,7 +281,15 @@ VulkanQueue* VulkanCore::getQueue() {
   return &m_queue;
 }
 
-void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
+u32 VulkanCore::getQueueFamily() const {
+  return m_queueFamily;
+}
+
+const std::vector<VkFramebuffer>& VulkanCore::getFramebuffers() const {
+  return m_framebuffers;
+}
+
+void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer *cmdBufs) {
   VkCommandBufferAllocateInfo cmdBufAllocInfo{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .pNext = nullptr,
@@ -278,13 +386,13 @@ void VulkanCore::createDebugMessageCallback() {
   auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
   VkResult res = func ? func(m_instance, &createInfo, nullptr, &m_debugMessenger) : VK_ERROR_EXTENSION_NOT_PRESENT;
   CHECK_VK_RESULT(res, "[VulkanCore::createDebugMessageCallback] Failed to set up debug messenger");
-  dprint("Debug utils created");
+  dprint("Created debug utils");
 }
 
 void VulkanCore::createSurface(GLFWwindow* window) {
   VkResult res = glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface);
   CHECK_VK_RESULT(res, "[VulkanCore::createSurface] Can't create GLFW window surface");
-  dprint("GLFW window surface created");
+  dprint("Created GLFW window surface");
 }
 
 void VulkanCore::createLogicalDevice() {
@@ -330,7 +438,7 @@ void VulkanCore::createLogicalDevice() {
 
   VkResult res = vkCreateDevice(physDevice.m_physDevice, &deviceCreateInfo, nullptr, &m_device);
   CHECK_VK_RESULT(res, "vkCreateDevice");
-  dprint("Logical device created");
+  dprint("Created logical device");
 }
 
 void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
@@ -340,8 +448,8 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
 
   u32 numImages = ChooseNumImages(surfaceCaps);
   VkPresentModeKHR presentMode = ChoosePresentMode(presentModes);
-  VkSurfaceFormatKHR surfaceFormat = ChooseSurfaceFormatAndColorSpace(physDevice.m_surfaceFormats);
   VkExtent2D swapchainExtent = ChooseSwapExtent(surfaceCaps, windowExtent);
+  m_swapchainSurfaceFormat = ChooseSurfaceFormatAndColorSpace(physDevice.m_surfaceFormats);
 
   VkSwapchainCreateInfoKHR swapchainCreateInfo{
     .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -349,8 +457,8 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
     .flags = 0,
     .surface = m_surface,
     .minImageCount = numImages,
-    .imageFormat = surfaceFormat.format,
-    .imageColorSpace = surfaceFormat.colorSpace,
+    .imageFormat = m_swapchainSurfaceFormat.format,
+    .imageColorSpace = m_swapchainSurfaceFormat.colorSpace,
     .imageExtent = swapchainExtent,
     .imageArrayLayers = 1,
     .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -366,7 +474,7 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
 
   VkResult res = vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain);
   CHECK_VK_RESULT(res, "vkCreateSwapchainKHR");
-  dprint("Swapchain created");
+  dprint("Created swapchain");
 
   u32 numSwapchainImaages = 0;
   res = vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImaages, nullptr);
@@ -385,44 +493,41 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
 
   for (u32 i = 0; i < numSwapchainImaages; i++)
     m_imageViews[i] = CreateImageView(
-      m_device, m_images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, layerCount, mipLevels
+      m_device, m_images[i], m_swapchainSurfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, layerCount, mipLevels
     );
-}
-
-void VulkanCore::createCommandBufferPool() {
-  VkCommandPoolCreateInfo cmdPoolCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = 0,
-    .queueFamilyIndex = m_queueFamily
-  };
-
-  VkResult res = vkCreateCommandPool(m_device, &cmdPoolCreateInfo, nullptr, &m_cmdBufPool);
-  CHECK_VK_RESULT(res, "vkCreateCommandPool");
-  dprint("Command buffer pool created");
 }
 
 void VulkanCore::createQueue() {
   m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
 }
 
+void VulkanCore::destroyFramebuffers() {
+  for (auto& fb : m_framebuffers)
+    vkDestroyFramebuffer(m_device, fb, nullptr);
+  dprint("Destroyed framebuffers");
+}
+
 void VulkanCore::destroyQueue() {
   m_queue.destroy();
+  dprint("Destroyed queue");
 }
 
 void VulkanCore::destroyCommandBufferPool() {
   vkDestroyCommandPool(m_device, m_cmdBufPool, nullptr);
+  dprint("Destroyed command buffer pool");
 }
 
 void VulkanCore::destroySwapchain() {
   for (auto& imageView : m_imageViews)
     vkDestroyImageView(m_device, imageView, nullptr);
   vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+
+  dprint("Destroyed image views and swapchain");
 }
 
 void VulkanCore::destroyLogicalDevice() {
   vkDestroyDevice(m_device, nullptr);
-  dprint("Logical device destroyed");
+  dprint("Destroyed Logical device");
 }
 
 void VulkanCore::destroySurface() {
@@ -431,12 +536,12 @@ void VulkanCore::destroySurface() {
     error("[VulkanCore::destroySurface] Can't find address of the function");
 
   func(m_instance, m_surface, nullptr); // Or vkDestroySurfaceKHR(instance, surface, nullptr);
-  dprint("GLFW window surface destroyed");
+  dprint("Destroyed GLFW window surface");
 }
 
 void VulkanCore::destroyInstance() {
   vkDestroyInstance(m_instance, nullptr);
-  dprint("Vulkan instance destroyed");
+  dprint("Destroyed Vulkan instance");
 }
 
 void VulkanCore::destroyDebugMessageCallback() {
@@ -445,7 +550,7 @@ void VulkanCore::destroyDebugMessageCallback() {
     error("[VulkanCore::destroyDebugMessageCallback] Can't find address of the function");
 
   func(m_instance, m_debugMessenger, nullptr);
-  dprint("Vulkan instance destroyed");
+  dprint("Destroyed message callback");
 }
 
 } // namespace lve
