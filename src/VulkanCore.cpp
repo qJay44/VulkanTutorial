@@ -7,9 +7,9 @@ namespace lve {
 namespace {
 
 #ifdef NDEBUG
-  const bool enableValidationLayers = false;
+  constexpr bool enableValidationLayers = false;
 #else
-  const bool enableValidationLayers = true;
+  constexpr bool enableValidationLayers = true;
 #endif
 
 constexpr std::string GetDebugSeverityStr(VkDebugUtilsMessageSeverityFlagBitsEXT severity) {
@@ -57,12 +57,88 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
   return VK_FALSE;
 }
 
-} // namespace
+u32 ChooseNumImages(const VkSurfaceCapabilitiesKHR& capabilities) {
+  u32 requestedNumImages = capabilities.minImageCount + 1;
+  u32 finalNumImages = requestedNumImages;
 
-VulkanCore::VulkanCore() {
+  if (capabilities.maxImageCount > 0 && requestedNumImages > capabilities.maxImageCount)
+    finalNumImages = capabilities.maxImageCount;
+
+  return finalNumImages;
 }
 
+VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) {
+  for (const VkPresentModeKHR& pm : presentModes)
+    if (pm == VK_PRESENT_MODE_MAILBOX_KHR)
+      return pm;
+  return VK_PRESENT_MODE_FIFO_KHR; // Always supported
+}
+
+VkSurfaceFormatKHR ChooseSurfaceFormatAndColorSpace(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) {
+  for (const VkSurfaceFormatKHR& sf : surfaceFormats)
+    if (sf.format == VK_FORMAT_B8G8R8A8_SRGB && sf.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+      return sf;
+  return surfaceFormats[0];
+}
+
+VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, VkExtent2D windowExtent) {
+  if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+    return capabilities.currentExtent;
+  } else {
+    VkExtent2D actualExtent = windowExtent;
+    actualExtent.width = std::max(
+        capabilities.minImageExtent.width,
+        std::min(capabilities.maxImageExtent.width, actualExtent.width));
+    actualExtent.height = std::max(
+        capabilities.minImageExtent.height,
+        std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+    return actualExtent;
+  }
+}
+
+VkImageView CreateImageView(
+  VkDevice device,
+  VkImage image,
+  VkFormat format,
+  VkImageAspectFlags aspectFlags,
+  VkImageViewType viewType,
+  u32 layerCount,
+  u32 mipLevels
+) {
+  VkImageViewCreateInfo viewCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .image = image,
+    .viewType = viewType,
+    .format = format,
+    .components = {
+      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+    },
+    .subresourceRange = {
+      .aspectMask = aspectFlags,
+      .baseMipLevel = 0,
+      .levelCount = mipLevels,
+      .baseArrayLayer = 0,
+      .layerCount = layerCount,
+    },
+  };
+
+  VkImageView imageView;
+  VkResult res = vkCreateImageView(device, &viewCreateInfo, nullptr, &imageView);
+  CHECK_VK_RESULT(res, "vkCreateImageView");
+
+  return imageView;
+}
+
+} // namespace
+
 VulkanCore::~VulkanCore() {
+  destroySwapchain();
   destroyLogicalDevice();
   destroySurface();
   destroyDebugMessageCallback();
@@ -82,6 +158,7 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   m_queueFamily = m_physDevices.selectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
   createLogicalDevice();
+  createSwapchain(GetWindowExtent(window));
 }
 
 void VulkanCore::createInstance(const std::string& appName) {
@@ -122,11 +199,11 @@ void VulkanCore::createInstance(const std::string& appName) {
     .flags = 0,
     .pApplicationInfo = &appInfo,
 #ifdef NDEBUG
-    .enabledLayerCount = static_cast<u32>(layers.size()),
-    .ppEnabledLayerNames = layers.data(),
-#else
     .enabledLayerCount = 0,
     .ppEnabledLayerNames = nullptr,
+#else
+    .enabledLayerCount = static_cast<u32>(layers.size()),
+    .ppEnabledLayerNames = layers.data(),
 #endif
     .enabledExtensionCount = static_cast<u32>(extensions.size()),
     .ppEnabledExtensionNames = extensions.data()
@@ -215,6 +292,68 @@ void VulkanCore::createLogicalDevice() {
   VkResult res = vkCreateDevice(physDevice.m_physDevice, &deviceCreateInfo, nullptr, &m_device);
   CHECK_VK_RESULT(res, "vkCreateDevice");
   dprint("Logical device created");
+}
+
+void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
+  const auto& physDevice = m_physDevices.selected();
+  const auto& surfaceCaps = physDevice.m_surfaceCaps;
+  const auto& presentModes = physDevice.m_presentModes;
+
+  u32 numImages = ChooseNumImages(surfaceCaps);
+  VkPresentModeKHR presentMode = ChoosePresentMode(presentModes);
+  VkSurfaceFormatKHR surfaceFormat = ChooseSurfaceFormatAndColorSpace(physDevice.m_surfaceFormats);
+  VkExtent2D swapchainExtent = ChooseSwapExtent(surfaceCaps, windowExtent);
+
+  VkSwapchainCreateInfoKHR swapchainCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+    .pNext = nullptr,
+    .flags = 0,
+    .surface = m_surface,
+    .minImageCount = numImages,
+    .imageFormat = surfaceFormat.format,
+    .imageColorSpace = surfaceFormat.colorSpace,
+    .imageExtent = swapchainExtent,
+    .imageArrayLayers = 1,
+    .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .queueFamilyIndexCount = 1,
+    .pQueueFamilyIndices = &m_queueFamily,
+    .preTransform = surfaceCaps.currentTransform,
+    .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+    .presentMode = presentMode,
+    .clipped = VK_TRUE,
+    .oldSwapchain = VK_NULL_HANDLE,
+  };
+
+  VkResult res = vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain);
+  CHECK_VK_RESULT(res, "vkCreateSwapchainKHR");
+  dprint("Swapchain created");
+
+  u32 numSwapchainImaages = 0;
+  res = vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImaages, nullptr);
+  CHECK_VK_RESULT(res, "vkGetSwapchainImagesKHR (1)");
+  assert(numImages == numSwapchainImaages);
+  dprint("Num images: [{}]", numSwapchainImaages);
+
+  m_images.resize(numSwapchainImaages);
+  m_imageViews.resize(numSwapchainImaages);
+
+  res = vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImaages, m_images.data());
+  CHECK_VK_RESULT(res, "vkGetSwapchainImagesKHR (2)");
+
+  u32 layerCount = 1;
+  u32 mipLevels = 1;
+
+  for (u32 i = 0; i < numSwapchainImaages; i++)
+    m_imageViews[i] = CreateImageView(
+      m_device, m_images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, layerCount, mipLevels
+    );
+}
+
+void VulkanCore::destroySwapchain() {
+  for (auto& imageView : m_imageViews)
+    vkDestroyImageView(m_device, imageView, nullptr);
+  vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 }
 
 void VulkanCore::destroyLogicalDevice() {

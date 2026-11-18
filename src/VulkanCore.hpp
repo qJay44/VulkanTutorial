@@ -6,7 +6,7 @@ namespace lve {
 
 class VulkanCore {
 public:
-  VulkanCore();
+  VulkanCore() = default;
   ~VulkanCore();
 
   void init(const std::string& appName, GLFWwindow* window);
@@ -19,13 +19,18 @@ private:
   VulkanPhysicalDevices m_physDevices;
   u32 m_queueFamily = 0;
   VkDevice m_device;
+  VkSwapchainKHR m_swapchain;
+  std::vector<VkImage> m_images;
+  std::vector<VkImageView> m_imageViews;
 
 private:
   void createInstance(const std::string& appName);
   void createDebugMessageCallback();
   void createSurface(GLFWwindow* window);
   void createLogicalDevice();
+  void createSwapchain(VkExtent2D windowExtent);
 
+  void destroySwapchain();
   void destroyLogicalDevice();
   void destroySurface();
   void destroyDebugMessageCallback();
