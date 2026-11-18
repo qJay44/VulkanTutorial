@@ -12,6 +12,8 @@ public:
   void init(const std::string& appName, GLFWwindow* window);
 
   u32 getNumImages() const;
+  const VkImage& getImage(u32 index) const;
+
   void createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs);
   void freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs);
 

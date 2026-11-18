@@ -167,6 +167,12 @@ u32 VulkanCore::getNumImages() const {
   return static_cast<u32>(m_images.size());
 }
 
+const VkImage& VulkanCore::getImage(u32 index) const {
+  if (index >= m_images.size())
+    error("[VulkanCore::getImage] Invalid image index: [{}], available images: [{}]", index, m_images.size());
+  return m_images[index];
+}
+
 void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
   VkCommandBufferAllocateInfo cmdBufAllocInfo{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

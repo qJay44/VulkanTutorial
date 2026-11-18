@@ -19,6 +19,7 @@ private:
 
 private:
   void createCommandBuffers();
+  void recordCommandBuffers();
 };
 
 } // namespace lve
