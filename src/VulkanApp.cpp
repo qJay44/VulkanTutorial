@@ -10,13 +10,17 @@ VulkanApp::~VulkanApp() {
 
 void VulkanApp::init(const char* appName, GLFWwindow* window) {
   m_core.init(appName, window);
+  m_pQueue = m_core.getQueue();
   m_numImages = m_core.getNumImages();
+
   createCommandBuffers();
   recordCommandBuffers();
 }
 
 void VulkanApp::render() {
-
+  u32 imageIndex = m_pQueue->acquireNextImage();
+  m_pQueue->submitAsync(m_cmdBufs[imageIndex]);
+  m_pQueue->present(imageIndex);
 }
 
 void VulkanApp::createCommandBuffers() {
@@ -36,7 +40,7 @@ void VulkanApp::recordCommandBuffers() {
   };
 
   for (size_t i = 0; i < m_cmdBufs.size(); i++) {
-    wrappers::beginCommandBuffer(m_cmdBufs[i], 0);
+    wrappers::beginCommandBuffer(m_cmdBufs[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
     vkCmdClearColorImage(m_cmdBufs[i], m_core.getImage(i), VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &imageRange);
 
     VkResult res = vkEndCommandBuffer(m_cmdBufs[i]);

@@ -14,5 +14,19 @@ void beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags
   CHECK_VK_RESULT(res, "vkBeginCommandBuffer");
 }
 
+VkSemaphore createSemaphore(VkDevice device) {
+  VkSemaphoreCreateInfo createInfo{
+    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+  };
+
+  VkSemaphore sem;
+  VkResult res = vkCreateSemaphore(device, &createInfo, nullptr, &sem);
+  CHECK_VK_RESULT(res, "vkCreateSemaphore");
+
+  return sem;
+}
+
 } // namespace lve::wrappers
 

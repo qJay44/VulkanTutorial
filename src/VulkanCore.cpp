@@ -161,6 +161,9 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createLogicalDevice();
   createSwapchain(GetWindowExtent(window));
   createCommandBufferPool();
+
+  // Same logic as physical device resource handling
+  m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
 }
 
 u32 VulkanCore::getNumImages() const {
@@ -171,6 +174,10 @@ const VkImage& VulkanCore::getImage(u32 index) const {
   if (index >= m_images.size())
     error("[VulkanCore::getImage] Invalid image index: [{}], available images: [{}]", index, m_images.size());
   return m_images[index];
+}
+
+VulkanQueue* VulkanCore::getQueue() {
+  return &m_queue;
 }
 
 void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {

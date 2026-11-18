@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VulkanPhysicalDevices.hpp"
+#include "VulkanQueue.hpp"
 
 namespace lve {
 
@@ -13,6 +14,7 @@ public:
 
   u32 getNumImages() const;
   const VkImage& getImage(u32 index) const;
+  VulkanQueue* getQueue();
 
   void createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs);
   void freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs);
@@ -29,6 +31,7 @@ private:
   std::vector<VkImage> m_images;
   std::vector<VkImageView> m_imageViews;
   VkCommandPool m_cmdBufPool;
+  VulkanQueue m_queue;
 
 private:
   void createInstance(const std::string& appName);
