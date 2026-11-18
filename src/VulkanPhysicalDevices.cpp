@@ -146,6 +146,8 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
     }
 
     dprint("Num heap types: [{}]\n", currDevice.m_memProps.memoryHeapCount);
+
+    vkGetPhysicalDeviceFeatures(currDevice.m_physDevice, &currDevice.m_features);
   }
 }
 

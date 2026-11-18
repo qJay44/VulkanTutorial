@@ -18,12 +18,15 @@ private:
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanPhysicalDevices m_physDevices;
   u32 m_queueFamily = 0;
+  VkDevice m_device;
 
 private:
   void createInstance(const std::string& appName);
   void createDebugMessageCallback();
   void createSurface(GLFWwindow* window);
+  void createLogicalDevice();
 
+  void destroyLogicalDevice();
   void destroySurface();
   void destroyDebugMessageCallback();
   void destroyInstance();
