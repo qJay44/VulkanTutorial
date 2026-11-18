@@ -138,6 +138,9 @@ VkImageView CreateImageView(
 } // namespace
 
 VulkanCore::~VulkanCore() {
+  vkDeviceWaitIdle(m_device);
+
+  destroyQueue();
   destroyCommandBufferPool();
   destroySwapchain();
   destroyLogicalDevice();
@@ -161,9 +164,7 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createLogicalDevice();
   createSwapchain(GetWindowExtent(window));
   createCommandBufferPool();
-
-  // Same logic as physical device resource handling
-  m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
+  createQueue();
 }
 
 u32 VulkanCore::getNumImages() const {
@@ -195,6 +196,7 @@ void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
 }
 
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs) {
+  m_queue.waitIdle();
   vkFreeCommandBuffers(m_device, m_cmdBufPool, count, cmdBufs);
 }
 
@@ -398,6 +400,14 @@ void VulkanCore::createCommandBufferPool() {
   VkResult res = vkCreateCommandPool(m_device, &cmdPoolCreateInfo, nullptr, &m_cmdBufPool);
   CHECK_VK_RESULT(res, "vkCreateCommandPool");
   dprint("Command buffer pool created");
+}
+
+void VulkanCore::createQueue() {
+  m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
+}
+
+void VulkanCore::destroyQueue() {
+  m_queue.destroy();
 }
 
 void VulkanCore::destroyCommandBufferPool() {

@@ -40,7 +40,9 @@ private:
   void createLogicalDevice();
   void createSwapchain(VkExtent2D windowExtent);
   void createCommandBufferPool();
+  void createQueue();
 
+  void destroyQueue();
   void destroyCommandBufferPool();
   void destroySwapchain();
   void destroyLogicalDevice();

@@ -24,13 +24,15 @@ int main() {
 
   glfwSetKeyCallback(window, GLFW_KeyCallback);
 
-  lve::VulkanApp app;
-  app.init("VulkanApp", window);
+  lve::VulkanApp* app = new lve::VulkanApp();
+  app->init("VulkanApp", window);
 
   while (!glfwWindowShouldClose(window)) {
-    app.render();
     glfwPollEvents();
+    app->render();
   }
+
+  app->destroy();
 
   glfwDestroyWindow(window);
   glfwTerminate();

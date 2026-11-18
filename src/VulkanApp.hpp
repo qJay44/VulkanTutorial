@@ -8,10 +8,10 @@ namespace lve {
 class VulkanApp {
 public:
   VulkanApp() = default;
-  ~VulkanApp();
 
   void init(const char* appName, GLFWwindow* window);
   void render();
+  void destroy();
 
 private:
   VulkanCore m_core;
@@ -20,6 +20,8 @@ private:
   std::vector<VkCommandBuffer> m_cmdBufs;
 
 private:
+  ~VulkanApp() = default;
+
   void createCommandBuffers();
   void recordCommandBuffers();
 };
