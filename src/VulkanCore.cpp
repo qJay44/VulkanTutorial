@@ -138,6 +138,7 @@ VkImageView CreateImageView(
 } // namespace
 
 VulkanCore::~VulkanCore() {
+  destroyCommandBufferPool();
   destroySwapchain();
   destroyLogicalDevice();
   destroySurface();
@@ -159,6 +160,29 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
 
   createLogicalDevice();
   createSwapchain(GetWindowExtent(window));
+  createCommandBufferPool();
+}
+
+u32 VulkanCore::getNumImages() const {
+  return static_cast<u32>(m_images.size());
+}
+
+void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
+  VkCommandBufferAllocateInfo cmdBufAllocInfo{
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .pNext = nullptr,
+    .commandPool = m_cmdBufPool,
+    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandBufferCount = count,
+  };
+
+  VkResult res = vkAllocateCommandBuffers(m_device, &cmdBufAllocInfo, cmdBufs);
+  CHECK_VK_RESULT(res, "vkCreateImageView");
+  dprint("Command buffers created: [{}]", count);
+}
+
+void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs) {
+  vkFreeCommandBuffers(m_device, m_cmdBufPool, count, cmdBufs);
 }
 
 void VulkanCore::createInstance(const std::string& appName) {
@@ -348,6 +372,23 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
     m_imageViews[i] = CreateImageView(
       m_device, m_images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, layerCount, mipLevels
     );
+}
+
+void VulkanCore::createCommandBufferPool() {
+  VkCommandPoolCreateInfo cmdPoolCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .queueFamilyIndex = m_queueFamily
+  };
+
+  VkResult res = vkCreateCommandPool(m_device, &cmdPoolCreateInfo, nullptr, &m_cmdBufPool);
+  CHECK_VK_RESULT(res, "vkCreateCommandPool");
+  dprint("Command buffer pool created");
+}
+
+void VulkanCore::destroyCommandBufferPool() {
+  vkDestroyCommandPool(m_device, m_cmdBufPool, nullptr);
 }
 
 void VulkanCore::destroySwapchain() {

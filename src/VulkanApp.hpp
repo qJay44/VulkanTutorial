@@ -6,14 +6,19 @@ namespace lve {
 
 class VulkanApp {
 public:
-  VulkanApp();
+  VulkanApp() = default;
   ~VulkanApp();
 
   void init(const char* appName, GLFWwindow* window);
   void render();
 
 private:
-  VulkanCore core;
+  VulkanCore m_core;
+  u32 m_numImages = 0;
+  std::vector<VkCommandBuffer> m_cmdBufs;
+
+private:
+  void createCommandBuffers();
 };
 
 } // namespace lve
