@@ -2,6 +2,7 @@
 
 #include "VulkanCore.hpp"
 #include "VulkanQueue.hpp"
+#include "VulkanShader.hpp"
 
 namespace lve {
 
@@ -20,12 +21,15 @@ private:
   std::vector<VkCommandBuffer> m_cmdBufs;
   VkRenderPass m_renderPass;
   std::vector<VkFramebuffer> m_framebuffers;
+  VulkanShader m_vs;
+  VulkanShader m_fs;
 
 private:
   ~VulkanApp() = default;
 
   void createCommandBuffers();
   void recordCommandBuffers(VkExtent2D windowExtent);
+  void createShaders();
 };
 
 } // namespace lve

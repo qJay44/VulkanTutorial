@@ -11,7 +11,8 @@ project(MyProject VERSION 1.0)
 
 # ===== Vulkan ==================================================== #
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED) # SPIRV-Tools seems not to be needed
+find_package(glslang REQUIRED)
 
 # ===== GLFW ====================================================== #
 
@@ -50,6 +51,9 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   Vulkan::Vulkan
+  glslang::glslang
+  glslang::SPIRV
+  glslang::glslang-default-resource-limits
   glfw
   Utils
 )
@@ -71,8 +75,8 @@ find_program(GLSL_VALIDATOR glslangValidator HINTS
 
 # get all .vert and .frag files in shaders directory
 file(GLOB_RECURSE GLSL_SOURCE_FILES
-  ${PROJECT_SOURCE_DIR}/shaders/*.frag
-  ${PROJECT_SOURCE_DIR}/shaders/*.vert
+  ${PROJECT_SOURCE_DIR}src/shaders/*.frag
+  ${PROJECT_SOURCE_DIR}src/shaders/*.vert
 )
 
 message(STATUS "Compiling Shaders")

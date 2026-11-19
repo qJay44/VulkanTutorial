@@ -1,5 +1,6 @@
 #include "VulkanApp.hpp"
 
+#include "utils/utils.hpp"
 #include "wrappers.hpp"
 
 namespace lve {
@@ -13,6 +14,7 @@ void VulkanApp::init(const char* appName, GLFWwindow* window) {
 
   createCommandBuffers();
   recordCommandBuffers(GetWindowExtent(window));
+  createShaders();
 }
 
 void VulkanApp::render() {
@@ -24,6 +26,8 @@ void VulkanApp::render() {
 void VulkanApp::destroy() {
   m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.size()), m_cmdBufs.data());
   vkDestroyRenderPass(m_core.getDevice(), m_renderPass, nullptr);
+  vkDestroyShaderModule(m_core.getDevice(), m_vs.shaderModule, nullptr);
+  vkDestroyShaderModule(m_core.getDevice(), m_fs.shaderModule, nullptr);
   delete this;
 }
 
@@ -66,6 +70,11 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
   }
 
   dprint("Recorded command buffers");
+}
+
+void VulkanApp::createShaders() {
+  m_vs.createShaderModuleFromText(m_core.getDevice(), "src/shaders/test.vert");
+  m_fs.createShaderModuleFromText(m_core.getDevice(), "src/shaders/test.frag");
 }
 
 } // namespace lve
