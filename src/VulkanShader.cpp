@@ -39,7 +39,7 @@ std::vector<u32> compile(VkDevice& device, glslang_stage_t stage, const std::str
   glslang_input_t input{};
   input.language = GLSLANG_SOURCE_GLSL;
   input.stage = stage;
-  input.client = GLSLANG_CLIENT_OPENGL;
+  input.client = GLSLANG_CLIENT_VULKAN;
   input.client_version = GLSLANG_TARGET_VULKAN_1_1;
   input.target_language = GLSLANG_TARGET_SPV;
   input.target_language_version = GLSLANG_TARGET_SPV_1_3;
@@ -135,8 +135,9 @@ void VulkanShader::createShaderModuleFromText(VkDevice& device, const fspath& pa
   if (!spirvData.empty()) {
     dprint("Created .spv shader from text file: [{}]", path.string());
     fspath writePath = path;
+    fspath projectPath = writePath.parent_path().parent_path().parent_path(); // ./src/shaders/* -> ./src/shaders/ -> ./src/ -> ./
     writePath += ".spv";
-    writePath = writePath.parent_path() / "Build/spv" / writePath.filename();
+    writePath = projectPath / "Build/spv" / writePath.filename();
 
     writeFile(writePath, spirvData.data(), spirvData.size() * sizeof(u32));
   } else {

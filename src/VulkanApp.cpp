@@ -7,14 +7,17 @@ namespace lve {
 
 void VulkanApp::init(const char* appName, GLFWwindow* window) {
   m_core.init(appName, window);
+  m_device = m_core.getDevice();
   m_numImages = m_core.getNumImages();
   m_pQueue = m_core.getQueue();
   m_renderPass = m_core.createSimpleRenderPass();
   m_framebuffers = m_core.createFramebuffers(m_renderPass);
 
+  createShaders();
+  createPipeline(window);
+
   createCommandBuffers();
   recordCommandBuffers(GetWindowExtent(window));
-  createShaders();
 }
 
 void VulkanApp::render() {
@@ -24,11 +27,13 @@ void VulkanApp::render() {
 }
 
 void VulkanApp::destroy() {
+  vkDeviceWaitIdle(m_device);
+
   m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.size()), m_cmdBufs.data());
-  vkDestroyRenderPass(m_core.getDevice(), m_renderPass, nullptr);
-  vkDestroyShaderModule(m_core.getDevice(), m_vs.shaderModule, nullptr);
-  vkDestroyShaderModule(m_core.getDevice(), m_fs.shaderModule, nullptr);
-  delete this;
+  vkDestroyShaderModule(m_device, m_vs.shaderModule, nullptr);
+  vkDestroyShaderModule(m_device, m_fs.shaderModule, nullptr);
+  vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+  delete this; // Also destroyes pipeline
 }
 
 void VulkanApp::createCommandBuffers() {
@@ -63,6 +68,16 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
     renderPassBeginInfo.framebuffer = m_framebuffers[i];
 
     vkCmdBeginRenderPass(m_cmdBufs[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    m_pipeline.bind(m_cmdBufs[i]);
+
+    u32 vertexCount = 3;
+    u32 instanceCount = 1;
+    u32 firstVertex = 0;
+    u32 firstInstance = 0;
+
+    vkCmdDraw(m_cmdBufs[i], vertexCount, instanceCount, firstVertex, firstInstance);
+
     vkCmdEndRenderPass(m_cmdBufs[i]);
 
     VkResult res = vkEndCommandBuffer(m_cmdBufs[i]);
@@ -73,8 +88,12 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
 }
 
 void VulkanApp::createShaders() {
-  m_vs.createShaderModuleFromText(m_core.getDevice(), "src/shaders/test.vert");
-  m_fs.createShaderModuleFromText(m_core.getDevice(), "src/shaders/test.frag");
+  m_vs.createShaderModuleFromText(m_device, "src/shaders/test.vert");
+  m_fs.createShaderModuleFromText(m_device, "src/shaders/test.frag");
+}
+
+void VulkanApp::createPipeline(GLFWwindow* window) {
+  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule);
 }
 
 } // namespace lve

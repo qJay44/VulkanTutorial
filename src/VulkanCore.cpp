@@ -138,8 +138,6 @@ VkImageView CreateImageView(
 } // namespace
 
 VulkanCore::~VulkanCore() {
-  vkDeviceWaitIdle(m_device);
-
   destroyFramebuffers();
   destroyQueue();
   destroyCommandBufferPool();
@@ -183,7 +181,7 @@ VkRenderPass VulkanCore::createSimpleRenderPass() {
 
   VkAttachmentReference attachRef{
     .attachment = 0,
-    .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
   };
 
   VkSubpassDescription subpassDesc{
@@ -200,7 +198,7 @@ VkRenderPass VulkanCore::createSimpleRenderPass() {
   };
 
   VkRenderPassCreateInfo renderPassCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
     .attachmentCount = 1,
@@ -337,7 +335,7 @@ void VulkanCore::createInstance(const std::string& appName) {
     .applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
     .pEngineName = "ogldev vulkan tutorial",
     .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
-    .apiVersion = VK_API_VERSION_1_0,
+    .apiVersion = VK_API_VERSION_1_1,
   };
 
   VkInstanceCreateInfo createInfo = {
