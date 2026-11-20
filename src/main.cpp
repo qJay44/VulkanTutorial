@@ -25,15 +25,16 @@ int main() {
 
   glfwSetKeyCallback(window, GLFW_KeyCallback);
 
-  lve::VulkanApp* app = new lve::VulkanApp();
-  app->init("VulkanApp", window);
+  // Scope to properly free resources before final program termination
+  {
+    lve::VulkanApp app;
+    app.init("VulkanApp", window);
 
-  while (!glfwWindowShouldClose(window)) {
-    glfwPollEvents();
-    app->render();
+    while (!glfwWindowShouldClose(window)) {
+      glfwPollEvents();
+      app.render();
+    }
   }
-
-  app->destroy();
 
   glfwDestroyWindow(window);
   glfwTerminate();

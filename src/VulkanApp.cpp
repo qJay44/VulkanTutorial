@@ -5,18 +5,24 @@
 
 namespace lve {
 
+VulkanApp::~VulkanApp() {
+  destroy();
+}
+
 void VulkanApp::init(const char* appName, GLFWwindow* window) {
+  m_pWindow = window;
+
   m_core.init(appName, window);
   m_device = m_core.getDevice();
   m_numImages = m_core.getNumImages();
   m_pQueue = m_core.getQueue();
-  m_renderPass = m_core.createSimpleRenderPass();
-  m_framebuffers = m_core.createFramebuffers(m_renderPass);
 
+  createSimpleRenderPass();
+  createFramebuffers();
   createShaders();
   createPipeline(window);
 
-  createCommandBuffers();
+  allocateCommandBuffers();
   recordCommandBuffers(GetWindowExtent(window));
 }
 
@@ -27,18 +33,126 @@ void VulkanApp::render() {
 }
 
 void VulkanApp::destroy() {
-  vkDeviceWaitIdle(m_device);
+  // NOTE: Assuming [m_pWindow] is assigned only during init()
+  if (m_pWindow) {
+    vkDeviceWaitIdle(m_device);
 
-  m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.size()), m_cmdBufs.data());
-  vkDestroyShaderModule(m_device, m_vs.shaderModule, nullptr);
-  vkDestroyShaderModule(m_device, m_fs.shaderModule, nullptr);
-  vkDestroyRenderPass(m_device, m_renderPass, nullptr);
-  delete this; // Also destroyes pipeline
+    freeCommandBuffers();
+
+    destroyPipeline();
+    destroyVertexBuffer();
+    destroyShaders();
+    destroyFramebuffers();
+    destroySimpleRenderPass();
+
+    m_pWindow = nullptr;
+  }
 }
 
-void VulkanApp::createCommandBuffers() {
+void VulkanApp::createSimpleRenderPass() {
+  VkAttachmentDescription attachDesc{
+    .flags = 0,
+    .format = m_core.getSwapchainSurfaceFormat().format,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  };
+
+  VkAttachmentReference attachRef{
+    .attachment = 0,
+    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  };
+
+  VkSubpassDescription subpassDesc{
+    .flags = 0,
+    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .inputAttachmentCount = 0,
+    .pInputAttachments = nullptr,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &attachRef,
+    .pResolveAttachments = nullptr,
+    .pDepthStencilAttachment = nullptr,
+    .preserveAttachmentCount = 0,
+    .pPreserveAttachments = nullptr,
+  };
+
+  VkRenderPassCreateInfo renderPassCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .attachmentCount = 1,
+    .pAttachments = &attachDesc,
+    .subpassCount = 1,
+    .pSubpasses = &subpassDesc,
+    .dependencyCount = 0,
+    .pDependencies = nullptr,
+  };
+
+  VkResult res = vkCreateRenderPass(m_device, &renderPassCreateInfo, nullptr, &m_renderPass);
+  CHECK_VK_RESULT(res, "vkCreateRenderPass");
+  dprint("Created a simple render pass");
+}
+
+void VulkanApp::createFramebuffers() {
+  m_framebuffers.resize(m_core.getNumImages());
+
+  VkExtent2D windowExtent = GetWindowExtent(m_pWindow);
+  VkResult res;
+
+  VkFramebufferCreateInfo fbCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .renderPass = m_renderPass,
+    .attachmentCount = 1,
+    .pAttachments = nullptr, // Assigned in the loop
+    .width = windowExtent.width,
+    .height = windowExtent.height,
+    .layers = 1,
+  };
+
+  for (u32 i = 0; i < m_core.getNumImages(); i++) {
+    fbCreateInfo.pAttachments = &m_core.getImageView(i);
+
+    res = vkCreateFramebuffer(m_device, &fbCreateInfo, nullptr, &m_framebuffers[i]);
+    CHECK_VK_RESULT(res, "vkCreateFramebuffer");
+  }
+
+  dprint("Created framebuffers");
+}
+
+void VulkanApp::createShaders() {
+  m_vs.createShaderModuleFromText(m_device, "src/shaders/test.vert");
+  m_fs.createShaderModuleFromText(m_device, "src/shaders/test.frag");
+}
+
+void VulkanApp::createVertexBuffer() {
+  struct Vertex {
+    vec3 pos;
+    vec2 tex;
+  };
+
+  std::vector<Vertex> vertices = {
+    {{-1.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
+    {{ 1.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+    {{ 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
+  };
+
+  m_mesh.m_vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+  m_mesh.m_vb = m_core.createVertexBuffer(vertices.data(), m_mesh.m_vertexBufferSize);
+}
+
+void VulkanApp::createPipeline(GLFWwindow* window) {
+  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule);
+}
+
+void VulkanApp::allocateCommandBuffers() {
   m_cmdBufs.resize(m_numImages);
-  m_core.createCommandBuffers(m_numImages, m_cmdBufs.data());
+  m_core.allocateCommandBuffers(m_numImages, m_cmdBufs.data());
 }
 
 void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
@@ -87,13 +201,34 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
   dprint("Recorded command buffers");
 }
 
-void VulkanApp::createShaders() {
-  m_vs.createShaderModuleFromText(m_device, "src/shaders/test.vert");
-  m_fs.createShaderModuleFromText(m_device, "src/shaders/test.frag");
+void VulkanApp::destroyPipeline() {
+  m_pipeline.destroy();
 }
 
-void VulkanApp::createPipeline(GLFWwindow* window) {
-  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule);
+void VulkanApp::freeCommandBuffers() {
+  m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.size()), m_cmdBufs.data());
+  dprint("Freed command buffers");
+}
+
+void VulkanApp::destroyShaders() {
+  vkDestroyShaderModule(m_device, m_vs.shaderModule, nullptr);
+  vkDestroyShaderModule(m_device, m_fs.shaderModule, nullptr);
+  dprint("Destroyed shaders");
+}
+
+void VulkanApp::destroyVertexBuffer() {
+  m_mesh.destroy(m_device);
+  dprint("Destroyed vertex buffer");
+}
+
+void VulkanApp::destroyFramebuffers() {
+  for (auto& fb : m_framebuffers)
+    vkDestroyFramebuffer(m_device, fb, nullptr);
+  dprint("Destroyed framebuffers");
+}
+void VulkanApp::destroySimpleRenderPass() {
+  vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+  dprint("Destroyed simple render pass");
 }
 
 } // namespace lve

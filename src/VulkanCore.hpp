@@ -1,5 +1,6 @@
 #pragma once
 
+#include "VulkanBufferAndMemory.hpp"
 #include "VulkanPhysicalDevices.hpp"
 #include "VulkanQueue.hpp"
 
@@ -12,13 +13,15 @@ public:
 
   void init(const std::string& appName, GLFWwindow* window);
 
-  VkRenderPass createSimpleRenderPass();
-  std::vector<VkFramebuffer> createFramebuffers(VkRenderPass renderPass);
-  void createCommandBuffers(u32 count, VkCommandBuffer* cmdBufs);
+  void allocateCommandBuffers(u32 count, VkCommandBuffer* cmdBufs);
+  VulkanBufferAndMemory createVertexBuffer(const void* vertices, size_t size);
 
   VkDevice& getDevice();
   u32 getNumImages() const;
+  const VkSwapchainKHR& getSwapchain() const;
+  const VkSurfaceFormatKHR& getSwapchainSurfaceFormat() const;
   const VkImage& getImage(u32 index) const;
+  const VkImageView& getImageView(u32 index) const;
   VulkanQueue* getQueue();
   u32 getQueueFamily() const;
   const std::vector<VkFramebuffer>& getFramebuffers() const;
@@ -39,7 +42,7 @@ private:
   std::vector<VkImageView> m_imageViews;
   VkCommandPool m_cmdBufPool;
   VulkanQueue m_queue;
-  std::vector<VkFramebuffer> m_framebuffers;
+  VkCommandBuffer m_copyCmdBuf;
 
 private:
   void createInstance(const std::string& appName);
@@ -50,7 +53,6 @@ private:
   void createCommandBufferPool();
   void createQueue();
 
-  void destroyFramebuffers();
   void destroyQueue();
   void destroyCommandBufferPool();
   void destroySwapchain();
@@ -58,6 +60,8 @@ private:
   void destroySurface();
   void destroyDebugMessageCallback();
   void destroyInstance();
+
+  void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 };
 
 } // namespace lve

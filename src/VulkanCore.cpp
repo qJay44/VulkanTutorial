@@ -1,6 +1,7 @@
 #include "VulkanCore.hpp"
 
 #include "utils/clrp.hpp"
+#include "wrappers.hpp"
 
 namespace lve {
 
@@ -138,7 +139,6 @@ VkImageView CreateImageView(
 } // namespace
 
 VulkanCore::~VulkanCore() {
-  destroyFramebuffers();
   destroyQueue();
   destroyCommandBufferPool();
   destroySwapchain();
@@ -166,88 +166,6 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createQueue();
 }
 
-VkRenderPass VulkanCore::createSimpleRenderPass() {
-  VkAttachmentDescription attachDesc{
-    .flags = 0,
-    .format = m_swapchainSurfaceFormat.format,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-  };
-
-  VkAttachmentReference attachRef{
-    .attachment = 0,
-    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-  };
-
-  VkSubpassDescription subpassDesc{
-    .flags = 0,
-    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-    .inputAttachmentCount = 0,
-    .pInputAttachments = nullptr,
-    .colorAttachmentCount = 1,
-    .pColorAttachments = &attachRef,
-    .pResolveAttachments = nullptr,
-    .pDepthStencilAttachment = nullptr,
-    .preserveAttachmentCount = 0,
-    .pPreserveAttachments = nullptr,
-  };
-
-  VkRenderPassCreateInfo renderPassCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = 0,
-    .attachmentCount = 1,
-    .pAttachments = &attachDesc,
-    .subpassCount = 1,
-    .pSubpasses = &subpassDesc,
-    .dependencyCount = 0,
-    .pDependencies = nullptr,
-  };
-
-  VkRenderPass renderPass;
-
-  VkResult res = vkCreateRenderPass(m_device, &renderPassCreateInfo, nullptr, &renderPass);
-  CHECK_VK_RESULT(res, "vkCreateRenderPass");
-  dprint("Created a simple render pass");
-
-  return renderPass;
-}
-
-std::vector<VkFramebuffer> VulkanCore::createFramebuffers(VkRenderPass renderPass) {
-  m_framebuffers.resize(m_images.size());
-
-  VkExtent2D windowExtent = GetWindowExtent(m_window);
-  VkResult res;
-
-  VkFramebufferCreateInfo fbCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = 0,
-    .renderPass = renderPass,
-    .attachmentCount = 1,
-    .pAttachments = nullptr, // Assigned in the loop
-    .width = windowExtent.width,
-    .height = windowExtent.height,
-    .layers = 1,
-  };
-
-  for (size_t i = 0; i < m_images.size(); i++) {
-    fbCreateInfo.pAttachments = &m_imageViews[i],
-
-    res = vkCreateFramebuffer(m_device, &fbCreateInfo, nullptr, &m_framebuffers[i]);
-    CHECK_VK_RESULT(res, "vkCreateFramebuffer");
-  }
-
-  dprint("Created framebuffers");
-
-  return m_framebuffers;
-}
-
 void VulkanCore::createCommandBufferPool() {
   VkCommandPoolCreateInfo cmdPoolCreateInfo{
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -269,10 +187,24 @@ u32 VulkanCore::getNumImages() const {
   return static_cast<u32>(m_images.size());
 }
 
+const VkSwapchainKHR& VulkanCore::getSwapchain() const {
+  return m_swapchain;
+}
+
+const VkSurfaceFormatKHR& VulkanCore::getSwapchainSurfaceFormat() const {
+  return m_swapchainSurfaceFormat;
+}
+
 const VkImage& VulkanCore::getImage(u32 index) const {
   if (index >= m_images.size())
     error("[VulkanCore::getImage] Invalid image index: [{}], available images: [{}]", index, m_images.size());
   return m_images[index];
+}
+
+const VkImageView& VulkanCore::getImageView(u32 index) const {
+  if (index >= m_imageViews.size())
+    error("[VulkanCore::getImageView] Invalid view image index: [{}], available view images: [{}]", index, m_imageViews.size());
+  return m_imageViews[index];
 }
 
 VulkanQueue* VulkanCore::getQueue() {
@@ -283,11 +215,7 @@ u32 VulkanCore::getQueueFamily() const {
   return m_queueFamily;
 }
 
-const std::vector<VkFramebuffer>& VulkanCore::getFramebuffers() const {
-  return m_framebuffers;
-}
-
-void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer *cmdBufs) {
+void VulkanCore::allocateCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
   VkCommandBufferAllocateInfo cmdBufAllocInfo{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .pNext = nullptr,
@@ -299,6 +227,41 @@ void VulkanCore::createCommandBuffers(u32 count, VkCommandBuffer *cmdBufs) {
   VkResult res = vkAllocateCommandBuffers(m_device, &cmdBufAllocInfo, cmdBufs);
   CHECK_VK_RESULT(res, "vkCreateImageView");
   dprint("Command buffers created: [{}]", count);
+}
+
+VulkanBufferAndMemory VulkanCore::createVertexBuffer(const void *vertices, size_t size) {
+  // Step 1: create the staging buffer
+  VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  VkMemoryPropertyFlags memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  VulkanBufferAndMemory stagingVertexBuffer = VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
+
+  // Step 2: map the memory of the stage buffer
+  void* mem = nullptr;
+  VkDeviceSize offest = 0;
+  VkMemoryMapFlags flags = 0;
+  VkResult res = vkMapMemory(m_device, stagingVertexBuffer.m_mem, offest, stagingVertexBuffer.m_allocationSize, flags, &mem);
+  CHECK_VK_RESULT(res, "vkMapMemory");
+
+  // Step 3: copy the vertices to the staging buffer
+  memcpy(mem, vertices, size);
+
+  // Step 4: unmap/release the mapped memory
+  vkUnmapMemory(m_device, stagingVertexBuffer.m_mem);
+
+  // Step 5: create the final buffer
+  usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  VulkanBufferAndMemory vertexBuffer = VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
+
+  // Step 6: copy the staging buffer to the final buffer
+  copyBuffer(stagingVertexBuffer.m_buffer, vertexBuffer.m_buffer, size);
+
+  // Step 7: release the resources of the staging buffer
+  stagingVertexBuffer.destroy(m_device);
+
+  return vertexBuffer;
 }
 
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs) {
@@ -499,12 +462,6 @@ void VulkanCore::createQueue() {
   m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
 }
 
-void VulkanCore::destroyFramebuffers() {
-  for (auto& fb : m_framebuffers)
-    vkDestroyFramebuffer(m_device, fb, nullptr);
-  dprint("Destroyed framebuffers");
-}
-
 void VulkanCore::destroyQueue() {
   m_queue.destroy();
   dprint("Destroyed queue");
@@ -549,6 +506,22 @@ void VulkanCore::destroyDebugMessageCallback() {
 
   func(m_instance, m_debugMessenger, nullptr);
   dprint("Destroyed message callback");
+}
+
+void VulkanCore::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+  wrappers::beginCommandBuffer(m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+  VkBufferCopy bufferCopy{
+    .srcOffset = 0,
+    .dstOffset = 0,
+    .size = size,
+  };
+
+  vkCmdCopyBuffer(m_copyCmdBuf, src, dst, 1, &bufferCopy);
+  vkEndCommandBuffer(m_copyCmdBuf);
+
+  m_queue.submitSync(m_copyCmdBuf);
+  m_queue.waitIdle();
 }
 
 } // namespace lve

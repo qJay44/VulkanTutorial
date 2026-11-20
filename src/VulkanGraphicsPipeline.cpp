@@ -23,7 +23,7 @@ void VulkanGraphicsPipeline::init(
   shaderStageInfos[1].pName = "main";
 
   VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
-  vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO;
+  vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo{};
   inputAssemblyStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -110,16 +110,22 @@ void VulkanGraphicsPipeline::init(
 }
 
 VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
-  // NOTE: Resoureces only allocated during init() so m_device
-  if (m_device) {
-    vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
-    vkDestroyPipeline(m_device, m_pipeline, nullptr);
-    dprint("Destroyed graphics pipeline");
-  }
+  destroy();
 }
 
 void VulkanGraphicsPipeline::bind(VkCommandBuffer cmdBuf) {
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+}
+
+void VulkanGraphicsPipeline::destroy() {
+  // NOTE: Assuming [m_device] is assigned only during init()
+  if (m_device) {
+    vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+    vkDestroyPipeline(m_device, m_pipeline, nullptr);
+    dprint("Destroyed graphics pipeline");
+
+    m_device = nullptr;
+  }
 }
 
 } // namespace lve

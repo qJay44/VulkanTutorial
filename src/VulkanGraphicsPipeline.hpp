@@ -16,6 +16,7 @@ public:
   );
 
   void bind(VkCommandBuffer cmdBuf);
+  void destroy();
 
 private:
   VkDevice m_device = nullptr;
