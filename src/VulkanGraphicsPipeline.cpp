@@ -2,14 +2,23 @@
 
 namespace lve {
 
+VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
+  destroy();
+}
+
 void VulkanGraphicsPipeline::init(
   VkDevice device,
   GLFWwindow* window,
   VkRenderPass renderPass,
   VkShaderModule vs,
-  VkShaderModule fs
+  VkShaderModule fs,
+  const VulkanMesh* mesh,
+  u32 numImages
 ) {
   m_device = device;
+
+  if (mesh)
+    createDescriptorSets(mesh, numImages);
 
   std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfos{};
   shaderStageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -85,6 +94,11 @@ void VulkanGraphicsPipeline::init(
   layoutInfo.setLayoutCount = 0;
   layoutInfo.pSetLayouts = nullptr;
 
+  if (mesh && mesh->m_vb.m_buffer) {
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &m_descriptorSetLayout;
+  }
+
   VkResult res = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &m_pipelineLayout);
   CHECK_VK_RESULT(res, "vkCreatePipelineLayout");
 
@@ -109,12 +123,21 @@ void VulkanGraphicsPipeline::init(
   dprint("Created graphics pipeline");
 }
 
-VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
-  destroy();
-}
-
-void VulkanGraphicsPipeline::bind(VkCommandBuffer cmdBuf) {
+void VulkanGraphicsPipeline::bind(VkCommandBuffer cmdBuf, u32 imageIndex) {
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+  if (!m_descriptorSets.empty()) {
+    vkCmdBindDescriptorSets(
+      cmdBuf,
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_pipelineLayout,
+      0, // First set
+      1, // descriptorSetCount
+      &m_descriptorSets[imageIndex],
+      0,      // dynamicOffsetCount
+      nullptr // pDynamicOffsets
+    );
+  }
 }
 
 void VulkanGraphicsPipeline::destroy() {
@@ -122,10 +145,103 @@ void VulkanGraphicsPipeline::destroy() {
   if (m_device) {
     vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
     vkDestroyPipeline(m_device, m_pipeline, nullptr);
+    vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, nullptr);
     dprint("Destroyed graphics pipeline");
 
     m_device = nullptr;
   }
+}
+
+void VulkanGraphicsPipeline::createDescriptorSets(const VulkanMesh* mesh, u32 numImages) {
+  createDescriptorPool(numImages);
+  createDescriptorSetLayout();
+  allocateDescriptorSets(numImages);
+  updateDescriptorSets(mesh, numImages);
+}
+
+void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
+  std::array<VkDescriptorPoolSize, 1> poolSizes = {
+    VkDescriptorPoolSize{
+      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = numImages,
+    },
+  };
+
+  VkDescriptorPoolCreateInfo poolInfo{
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .maxSets = numImages,
+    .poolSizeCount = 1,
+    .pPoolSizes = poolSizes.data(),
+  };
+
+  VkResult res = vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool);
+  CHECK_VK_RESULT(res, "vkCreateDescriptorPool");
+  dprint("Created descriptor pool");
+}
+
+void VulkanGraphicsPipeline::createDescriptorSetLayout() {
+  std::array<VkDescriptorSetLayoutBinding, 1> layoutBindings = {
+    VkDescriptorSetLayoutBinding{
+      .binding = 0,
+      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+      .pImmutableSamplers = nullptr,
+    },
+  };
+
+  VkDescriptorSetLayoutCreateInfo layoutInfo{
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0, // Must be zero
+    .bindingCount = static_cast<u32>(layoutBindings.size()),
+    .pBindings = layoutBindings.data(),
+  };
+
+  VkResult res = vkCreateDescriptorSetLayout(m_device, &layoutInfo, nullptr, &m_descriptorSetLayout);
+  CHECK_VK_RESULT(res, "vkCreateDescriptorSetLayout");
+}
+
+void VulkanGraphicsPipeline::allocateDescriptorSets(u32 numImages) {
+  std::vector<VkDescriptorSetLayout> layouts(numImages, m_descriptorSetLayout);
+
+  VkDescriptorSetAllocateInfo allocInfo{
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+    .pNext = nullptr,
+    .descriptorPool = m_descriptorPool,
+    .descriptorSetCount = numImages,
+    .pSetLayouts = layouts.data(),
+  };
+
+  m_descriptorSets.resize(numImages);
+
+  VkResult res = vkAllocateDescriptorSets(m_device, &allocInfo, m_descriptorSets.data());
+  CHECK_VK_RESULT(res, "vkAllocateDescriptorSets");
+}
+
+void VulkanGraphicsPipeline::updateDescriptorSets(const VulkanMesh* mesh, u32 numImages) {
+  VkDescriptorBufferInfo vertexBufferInfo{
+    .buffer = mesh->m_vb.m_buffer,
+    .offset = 0,
+    .range = mesh->m_vertexBufferSize,
+  };
+
+  VkWriteDescriptorSet defaultWriteDescriptorSet{};
+  defaultWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  defaultWriteDescriptorSet.dstBinding = 0;
+  defaultWriteDescriptorSet.dstArrayElement = 0;
+  defaultWriteDescriptorSet.descriptorCount = 1;
+  defaultWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  defaultWriteDescriptorSet.pBufferInfo = &vertexBufferInfo;
+
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets(numImages, defaultWriteDescriptorSet);
+  for (u32 i = 0; i < numImages; i++)
+    writeDescriptorSets[i].dstSet = m_descriptorSets[i];
+
+  vkUpdateDescriptorSets(m_device, numImages, writeDescriptorSets.data(), 0, nullptr);
 }
 
 } // namespace lve

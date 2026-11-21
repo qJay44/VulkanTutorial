@@ -1,12 +1,17 @@
 #version 460
 
-const vec2 vertices[3] = vec2[3](
-  vec2(-0.7f,  0.7f),
-  vec2( 0.7f,  0.7f),
-  vec2( 0.0f, -0.7f)
-);
+struct Vertex {
+  float x, y, z;
+  float u, v;
+};
+
+layout(binding = 0) readonly buffer Vertices {
+  Vertex data[];
+} b_vertices;
 
 void main() {
-  gl_Position = vec4(vertices[gl_VertexIndex], 0.f, 1.f);
+  Vertex vert = b_vertices.data[gl_VertexIndex];
+  vec3 pos = vec3(vert.x, vert.y, vert.z);
+  gl_Position = vec4(pos, 1.f);
 }
 

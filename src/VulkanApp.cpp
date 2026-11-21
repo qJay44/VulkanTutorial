@@ -20,6 +20,7 @@ void VulkanApp::init(const char* appName, GLFWwindow* window) {
   createSimpleRenderPass();
   createFramebuffers();
   createShaders();
+  createVertexBuffer();
   createPipeline(window);
 
   allocateCommandBuffers();
@@ -144,10 +145,11 @@ void VulkanApp::createVertexBuffer() {
 
   m_mesh.m_vertexBufferSize = sizeof(vertices[0]) * vertices.size();
   m_mesh.m_vb = m_core.createVertexBuffer(vertices.data(), m_mesh.m_vertexBufferSize);
+  dprint("Created vertex buffer");
 }
 
 void VulkanApp::createPipeline(GLFWwindow* window) {
-  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule);
+  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule, &m_mesh, m_numImages);
 }
 
 void VulkanApp::allocateCommandBuffers() {
@@ -183,7 +185,7 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
 
     vkCmdBeginRenderPass(m_cmdBufs[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    m_pipeline.bind(m_cmdBufs[i]);
+    m_pipeline.bind(m_cmdBufs[i], i);
 
     u32 vertexCount = 3;
     u32 instanceCount = 1;

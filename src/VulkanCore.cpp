@@ -139,6 +139,8 @@ VkImageView CreateImageView(
 } // namespace
 
 VulkanCore::~VulkanCore() {
+  freeCommandBuffers(1, &m_copyCmdBuf);
+
   destroyQueue();
   destroyCommandBufferPool();
   destroySwapchain();
@@ -164,6 +166,8 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createSwapchain(GetWindowExtent(window));
   createCommandBufferPool();
   createQueue();
+
+  allocateCommandBuffers(1, &m_copyCmdBuf);
 }
 
 void VulkanCore::createCommandBufferPool() {

@@ -32,7 +32,6 @@ private:
   VulkanMesh m_mesh;
 
 private:
-
   void createSimpleRenderPass();
   void createFramebuffers();
   void createShaders();
