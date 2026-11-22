@@ -15,6 +15,8 @@ public:
 
   void allocateCommandBuffers(u32 count, VkCommandBuffer* cmdBufs);
   VulkanBufferAndMemory createVertexBuffer(const void* vertices, size_t size);
+  void createUniformBuffers(std::vector<VulkanBufferAndMemory>& ubos, size_t size);
+  VulkanBufferAndMemory createUniformBuffer(size_t size);
 
   VkDevice& getDevice();
   u32 getNumImages() const;

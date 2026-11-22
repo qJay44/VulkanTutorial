@@ -233,7 +233,7 @@ void VulkanCore::allocateCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
   dprint("Command buffers created: [{}]", count);
 }
 
-VulkanBufferAndMemory VulkanCore::createVertexBuffer(const void *vertices, size_t size) {
+VulkanBufferAndMemory VulkanCore::createVertexBuffer(const void* vertices, size_t size) {
   // Step 1: create the staging buffer
   VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   VkMemoryPropertyFlags memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -266,6 +266,20 @@ VulkanBufferAndMemory VulkanCore::createVertexBuffer(const void *vertices, size_
   stagingVertexBuffer.destroy(m_device);
 
   return vertexBuffer;
+}
+
+void VulkanCore::createUniformBuffers(std::vector<VulkanBufferAndMemory>& ubos, size_t size) {
+  ubos.resize(m_images.size());
+  for (auto& ubo : ubos)
+    ubo = createUniformBuffer(size);
+}
+
+VulkanBufferAndMemory VulkanCore::createUniformBuffer(size_t size) {
+  VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+  VkMemoryPropertyFlags memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  return VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
 }
 
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs) {

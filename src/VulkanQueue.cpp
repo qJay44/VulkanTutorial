@@ -77,6 +77,8 @@ void VulkanQueue::present(u32 imageIndex) {
 
   VkResult res = vkQueuePresentKHR(m_queue, &presentInfo);
   CHECK_VK_RESULT(res, "vkQueuePresentKHR");
+
+  waitIdle(); // NOTE: Authours workaround
 }
 
 void VulkanQueue::waitIdle() {

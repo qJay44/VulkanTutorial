@@ -5,14 +5,48 @@
 
 namespace lve {
 
-VulkanApp::~VulkanApp() {
-  destroy();
+namespace {
+
+void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+  (void)scancode;
+  (void)mods;
 }
 
-void VulkanApp::init(const char* appName, GLFWwindow* window) {
-  m_pWindow = window;
+void GLFW_CursorPosCallback(GLFWwindow* window, double x, double y) {
+  auto* app = (VulkanApp*)glfwGetWindowUserPointer(window);
+  app->mouseMoveCallback({x, y});
+}
 
-  m_core.init(appName, window);
+struct UniformData {
+  mat4 WVP{};
+};
+
+} // namespace
+
+VulkanApp::VulkanApp(const char* appName) {
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+  int initWidth = 1600;
+  int initHeight = 900;
+
+  if (m_window)
+    error("[VulkanApp::init] Window already exists");
+
+  m_window = glfwCreateWindow(initWidth, initHeight, "MyProgram", nullptr, nullptr);
+  if (!m_window)
+    error("[VulkanApp::init] Didn't create window");
+
+  glfwSetWindowUserPointer(m_window, this);
+  glfwSetKeyCallback(m_window, GLFW_KeyCallback);
+  glfwSetCursorPosCallback(m_window, GLFW_CursorPosCallback);
+  glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  glfwSetCursorPos(m_window, initWidth / 2.f, initHeight / 2.f);
+
+  m_core.init(appName, m_window);
   m_device = m_core.getDevice();
   m_numImages = m_core.getNumImages();
   m_pQueue = m_core.getQueue();
@@ -20,33 +54,74 @@ void VulkanApp::init(const char* appName, GLFWwindow* window) {
   createSimpleRenderPass();
   createFramebuffers();
   createShaders();
+  createUniformBuffers();
   createVertexBuffer();
-  createPipeline(window);
+  createPipeline(m_window);
 
   allocateCommandBuffers();
-  recordCommandBuffers(GetWindowExtent(window));
+  recordCommandBuffers(GetWindowExtent(m_window));
+
+  m_camera.pos.z = -2.f;
+  m_camera.yaw = glm::radians(90.f);
+}
+
+VulkanApp::~VulkanApp() {
+  // vkDeviceWaitIdle(m_device);
+
+  freeCommandBuffers();
+
+  destroyPipeline();
+  destroyVertexBuffer();
+  destroyUniformBuffers();
+  destroyShaders();
+  destroyFramebuffers();
+  destroySimpleRenderPass();
+
+  glfwDestroyWindow(m_window);
+}
+
+void VulkanApp::mouseMoveCallback(vec2 mousePos) {
+  constexpr float pi = glm::pi<float>();
+  constexpr float pi_2 = pi * 0.5f;
+
+  auto extent = GetWindowExtent(m_window);
+
+  vec2 winSize{extent.width, extent.height};
+  vec2 winCenter = winSize * 0.5f;
+  vec2 distFromCenter = mousePos - winCenter;
+
+  vec2 delta = m_camera.sensitivity * distFromCenter / winCenter;
+  m_camera.yaw += -delta.x;
+  m_camera.pitch += delta.y;
+
+  m_camera.yaw = glm::mod(m_camera.yaw, 2.f * pi);
+  m_camera.pitch = glm::clamp(m_camera.pitch, -pi_2 + 0.1f, pi_2 - 0.1f);
 }
 
 void VulkanApp::render() {
-  u32 imageIndex = m_pQueue->acquireNextImage();
-  m_pQueue->submitAsync(m_cmdBufs[imageIndex]);
-  m_pQueue->present(imageIndex);
-}
+  VkExtent2D windowExtent = GetWindowExtent(m_window);
+  float aspect = (float)windowExtent.width / windowExtent.height;
+  m_camera.setPerspectiveProjection(glm::radians(60.f), aspect, 0.1f, 100.f);
 
-void VulkanApp::destroy() {
-  // NOTE: Assuming [m_pWindow] is assigned only during init()
-  if (m_pWindow) {
-    vkDeviceWaitIdle(m_device);
+  float prevTime = glfwGetTime() + 1e-6f;
 
-    freeCommandBuffers();
+  while (!glfwWindowShouldClose(m_window)) {
+    glfwPollEvents();
+    glfwSetCursorPos(m_window, windowExtent.width * 0.5f, windowExtent.height * 0.5f);
 
-    destroyPipeline();
-    destroyVertexBuffer();
-    destroyShaders();
-    destroyFramebuffers();
-    destroySimpleRenderPass();
+    float currTime = glfwGetTime();
+    float dt = currTime - prevTime;
+    prevTime = currTime;
 
-    m_pWindow = nullptr;
+    updateCameraInput(dt);
+    m_camera.update();
+
+    u32 imageIndex = m_pQueue->acquireNextImage();
+
+    updateUniformBuffers(imageIndex);
+
+    m_pQueue->submitAsync(m_cmdBufs[imageIndex]);
+    m_pQueue->present(imageIndex);
   }
 }
 
@@ -101,7 +176,7 @@ void VulkanApp::createSimpleRenderPass() {
 void VulkanApp::createFramebuffers() {
   m_framebuffers.resize(m_core.getNumImages());
 
-  VkExtent2D windowExtent = GetWindowExtent(m_pWindow);
+  VkExtent2D windowExtent = GetWindowExtent(m_window);
   VkResult res;
 
   VkFramebufferCreateInfo fbCreateInfo{
@@ -148,8 +223,22 @@ void VulkanApp::createVertexBuffer() {
   dprint("Created vertex buffer");
 }
 
+void VulkanApp::createUniformBuffers() {
+  m_core.createUniformBuffers(m_uniformBuffers, sizeof(UniformData));
+}
+
 void VulkanApp::createPipeline(GLFWwindow* window) {
-  m_pipeline.init(m_device, window, m_renderPass, m_vs.shaderModule, m_fs.shaderModule, &m_mesh, m_numImages);
+  m_pipeline.init(
+    m_device,
+    window,
+    m_renderPass,
+    m_vs.shaderModule,
+    m_fs.shaderModule,
+    &m_mesh,
+    m_numImages,
+    m_uniformBuffers,
+    sizeof(UniformData)
+  );
 }
 
 void VulkanApp::allocateCommandBuffers() {
@@ -158,7 +247,7 @@ void VulkanApp::allocateCommandBuffers() {
 }
 
 void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
-  VkClearColorValue clearColor{{1.f, 0.f, 0.f, 0.f}};
+  VkClearColorValue clearColor{{0.01f, 0.01f, 0.01f, 0.f}};
   VkClearValue clearValue{};
   clearValue.color = clearColor;
 
@@ -203,8 +292,46 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
   dprint("Recorded command buffers");
 }
 
-void VulkanApp::destroyPipeline() {
-  m_pipeline.destroy();
+void VulkanApp::updateUniformBuffers(u32 imageIndex) {
+  static float foo = 0.f;
+  mat4 rotate = glm::rotate(mat4(1.f), glm::radians(foo), glm::normalize(vec3(0.f, 0.f, 1.f)));
+  mat4 world{1.f};
+  world *= rotate;
+
+  UniformData ubo{
+    .WVP = mat4{1.f},
+  };
+
+  ubo.WVP = world * m_camera.proj * m_camera.view;
+  m_uniformBuffers[imageIndex].update(m_device, &ubo, sizeof(UniformData));
+
+  foo += 0.001f;
+}
+
+void VulkanApp::updateCameraInput(float dt) {
+  vec3 forward = m_camera.orientation;
+  vec3 up = m_camera.up;
+  vec3 right = glm::normalize(glm::cross(up, forward));
+
+  vec3 totalMove{};
+  float mult = 1.f;
+
+  if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) totalMove += forward;
+  if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) totalMove += -right;
+  if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) totalMove += -forward;
+  if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) totalMove += right;
+  if (glfwGetKey(m_window, GLFW_KEY_SPACE)        == GLFW_PRESS) totalMove += -up;
+  if (glfwGetKey(m_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) totalMove += up;
+  if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) mult = m_camera.speedMult;
+
+  m_camera.pos += totalMove * m_camera.speed * mult * dt;
+}
+
+void VulkanApp::destroyPipeline() { m_pipeline.destroy(); }
+
+void VulkanApp::destroyUniformBuffers() {
+  for (auto& ubo : m_uniformBuffers)
+    ubo.destroy(m_device);
 }
 
 void VulkanApp::freeCommandBuffers() {

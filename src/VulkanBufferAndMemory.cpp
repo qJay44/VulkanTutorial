@@ -69,6 +69,16 @@ VulkanBufferAndMemory VulkanBufferAndMemory::createBuffer(
   return buf;
 }
 
+void VulkanBufferAndMemory::update(VkDevice device, const void* data, size_t size) {
+  void* mem = nullptr;
+
+  VkResult res = vkMapMemory(device, m_mem, 0, size, 0, &mem);
+  CHECK_VK_RESULT(res, "vkMapMemory");
+
+  memcpy(mem, data, size);
+  vkUnmapMemory(device, m_mem);
+}
+
 void VulkanBufferAndMemory::destroy(VkDevice device) {
   if (m_mem) vkFreeMemory(device, m_mem, nullptr);
   if (m_buffer) vkDestroyBuffer(device, m_buffer, nullptr);

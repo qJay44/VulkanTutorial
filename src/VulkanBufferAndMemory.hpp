@@ -15,6 +15,8 @@ struct VulkanBufferAndMemory {
     VkMemoryPropertyFlags properties
   );
 
+  void update(VkDevice device, const void* data, size_t size);
+
   void destroy(VkDevice device);
 };
 

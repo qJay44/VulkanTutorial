@@ -16,7 +16,9 @@ public:
     VkShaderModule vs,
     VkShaderModule fs,
     const VulkanMesh* mesh,
-    u32 numImages
+    u32 numImages,
+    const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+    size_t uniformDataSize
   );
 
   void bind(VkCommandBuffer cmdBuf, u32 imageIndex);
@@ -31,11 +33,23 @@ private:
   std::vector<VkDescriptorSet> m_descriptorSets;
 
 private:
-  void createDescriptorSets(const VulkanMesh* mesh, u32 numImages);
+  void createDescriptorSets(
+    const VulkanMesh* mesh,
+    u32 numImages,
+    const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+    size_t uniformDataSize
+  );
+
   void createDescriptorPool(u32 numImages);
-  void createDescriptorSetLayout();
+  void createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers);
   void allocateDescriptorSets(u32 numImages);
-  void updateDescriptorSets(const VulkanMesh* mesh, u32 numImages);
+
+  void updateDescriptorSets(
+    const VulkanMesh* mesh,
+    u32 numImages,
+    const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+    size_t uniformDataSize
+  );
 };
 
 } // namespace lve

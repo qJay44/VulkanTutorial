@@ -5,20 +5,21 @@
 #include "VulkanQueue.hpp"
 #include "VulkanShader.hpp"
 #include "VulkanGraphicsPipeline.hpp"
+#include "Camera.hpp"
 
 namespace lve {
 
 class VulkanApp {
 public:
-  VulkanApp() = default;
+  VulkanApp(const char* appName);
   ~VulkanApp();
 
-  void init(const char* appName, GLFWwindow* window);
+  void mouseMoveCallback(vec2 mousePos);
+
   void render();
-  void destroy();
 
 private:
-  GLFWwindow* m_pWindow = nullptr;
+  GLFWwindow* m_window = nullptr;
   VulkanCore m_core;
   VulkanQueue* m_pQueue = nullptr;
   VkDevice m_device = nullptr;
@@ -30,19 +31,27 @@ private:
   VulkanGraphicsPipeline m_pipeline;
   std::vector<VkCommandBuffer> m_cmdBufs;
   VulkanMesh m_mesh;
+  std::vector<VulkanBufferAndMemory> m_uniformBuffers;
+
+  Camera m_camera{};
 
 private:
   void createSimpleRenderPass();
   void createFramebuffers();
   void createShaders();
   void createVertexBuffer();
+  void createUniformBuffers();
   void createPipeline(GLFWwindow* window);
 
   void allocateCommandBuffers();
   void recordCommandBuffers(VkExtent2D windowExtent);
   void freeCommandBuffers();
 
+  void updateCameraInput(float dt);
+  void updateUniformBuffers(u32 imageIndex);
+
   void destroyPipeline();
+  void destroyUniformBuffers();
   void destroyVertexBuffer();
   void destroyShaders();
   void destroyFramebuffers();

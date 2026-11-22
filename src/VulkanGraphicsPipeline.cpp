@@ -13,12 +13,14 @@ void VulkanGraphicsPipeline::init(
   VkShaderModule vs,
   VkShaderModule fs,
   const VulkanMesh* mesh,
-  u32 numImages
+  u32 numImages,
+  const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+  size_t uniformDataSize
 ) {
   m_device = device;
 
   if (mesh)
-    createDescriptorSets(mesh, numImages);
+    createDescriptorSets(mesh, numImages, uniformBuffers, uniformDataSize);
 
   std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfos{};
   shaderStageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -153,17 +155,26 @@ void VulkanGraphicsPipeline::destroy() {
   }
 }
 
-void VulkanGraphicsPipeline::createDescriptorSets(const VulkanMesh* mesh, u32 numImages) {
+void VulkanGraphicsPipeline::createDescriptorSets(
+  const VulkanMesh* mesh,
+  u32 numImages,
+  const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+  size_t uniformDataSize
+) {
   createDescriptorPool(numImages);
-  createDescriptorSetLayout();
+  createDescriptorSetLayout(uniformBuffers);
   allocateDescriptorSets(numImages);
-  updateDescriptorSets(mesh, numImages);
+  updateDescriptorSets(mesh, numImages, uniformBuffers, uniformDataSize);
 }
 
 void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
-  std::array<VkDescriptorPoolSize, 1> poolSizes = {
+  std::array<VkDescriptorPoolSize, 2> poolSizes = {
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = numImages,
+    },
+    VkDescriptorPoolSize{
+      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
       .descriptorCount = numImages,
     },
   };
@@ -173,7 +184,7 @@ void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
     .pNext = nullptr,
     .flags = 0,
     .maxSets = numImages,
-    .poolSizeCount = 1,
+    .poolSizeCount = poolSizes.size(),
     .pPoolSizes = poolSizes.data(),
   };
 
@@ -182,8 +193,8 @@ void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
   dprint("Created descriptor pool");
 }
 
-void VulkanGraphicsPipeline::createDescriptorSetLayout() {
-  std::array<VkDescriptorSetLayoutBinding, 1> layoutBindings = {
+void VulkanGraphicsPipeline::createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers) {
+  std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {
     VkDescriptorSetLayoutBinding{
       .binding = 0,
       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -192,6 +203,16 @@ void VulkanGraphicsPipeline::createDescriptorSetLayout() {
       .pImmutableSamplers = nullptr,
     },
   };
+
+  if (!uniformBuffers.empty()) {
+    layoutBindings.push_back({
+      .binding = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+      .pImmutableSamplers = nullptr,
+    });
+  }
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -222,26 +243,57 @@ void VulkanGraphicsPipeline::allocateDescriptorSets(u32 numImages) {
   CHECK_VK_RESULT(res, "vkAllocateDescriptorSets");
 }
 
-void VulkanGraphicsPipeline::updateDescriptorSets(const VulkanMesh* mesh, u32 numImages) {
+void VulkanGraphicsPipeline::updateDescriptorSets(
+  const VulkanMesh* mesh,
+  u32 numImages,
+  const std::vector<VulkanBufferAndMemory>& uniformBuffers,
+  size_t uniformDataSize
+) {
   VkDescriptorBufferInfo vertexBufferInfo{
     .buffer = mesh->m_vb.m_buffer,
     .offset = 0,
     .range = mesh->m_vertexBufferSize,
   };
 
+  std::vector<VkDescriptorBufferInfo> uniformBufferInfos(uniformBuffers.size());
+  for (size_t i = 0; i < uniformBufferInfos.size(); i++) {
+    uniformBufferInfos[i] = {
+      .buffer = uniformBuffers[i].m_buffer,
+      .offset = 0,
+      .range = static_cast<VkDeviceSize>(uniformDataSize),
+    };
+  }
+
   VkWriteDescriptorSet defaultWriteDescriptorSet{};
   defaultWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  defaultWriteDescriptorSet.dstBinding = 0;
   defaultWriteDescriptorSet.dstArrayElement = 0;
   defaultWriteDescriptorSet.descriptorCount = 1;
-  defaultWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  defaultWriteDescriptorSet.pBufferInfo = &vertexBufferInfo;
 
-  std::vector<VkWriteDescriptorSet> writeDescriptorSets(numImages, defaultWriteDescriptorSet);
-  for (u32 i = 0; i < numImages; i++)
-    writeDescriptorSets[i].dstSet = m_descriptorSets[i];
+  assert(uniformBuffers.size() == numImages);
 
-  vkUpdateDescriptorSets(m_device, numImages, writeDescriptorSets.data(), 0, nullptr);
+  // One buffer used for all [numImages]
+  u32 vertexWriteDescriptors = numImages;
+  u32 uniformWriteDescriptors = numImages * !uniformBuffers.empty();
+  u32 totalWrtieDescriptors = vertexWriteDescriptors + uniformWriteDescriptors;
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets(totalWrtieDescriptors, defaultWriteDescriptorSet);
+
+  for (u32 i = 0; i < numImages; i++) {
+    auto& descVertex = writeDescriptorSets[i];
+    descVertex.dstBinding = 0;
+    descVertex.dstSet = m_descriptorSets[i];
+    descVertex.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descVertex.pBufferInfo = &vertexBufferInfo;
+
+    if (!uniformBuffers.empty()) {
+      auto& descUniform = writeDescriptorSets[i + vertexWriteDescriptors];
+      descUniform.dstBinding = 1;
+      descUniform.dstSet = m_descriptorSets[i];
+      descUniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      descUniform.pBufferInfo = &uniformBufferInfos[i];
+    }
+  }
+
+  vkUpdateDescriptorSets(m_device, totalWrtieDescriptors, writeDescriptorSets.data(), 0, nullptr);
 }
 
 } // namespace lve
