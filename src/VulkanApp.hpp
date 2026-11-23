@@ -39,7 +39,12 @@ private:
   void createSimpleRenderPass();
   void createFramebuffers();
   void createShaders();
-  void createVertexBuffer();
+
+  // Group
+  void createMesh();
+  void loadVertexBuffer();
+  void loadTexture();
+
   void createUniformBuffers();
   void createPipeline(GLFWwindow* window);
 
@@ -52,7 +57,7 @@ private:
 
   void destroyPipeline();
   void destroyUniformBuffers();
-  void destroyVertexBuffer();
+  void destroyMesh();
   void destroyShaders();
   void destroyFramebuffers();
   void destroySimpleRenderPass();

@@ -3,6 +3,7 @@
 #include "VulkanBufferAndMemory.hpp"
 #include "VulkanPhysicalDevices.hpp"
 #include "VulkanQueue.hpp"
+#include "VulkanTexture.hpp"
 
 namespace lve {
 
@@ -46,6 +47,8 @@ private:
   VulkanQueue m_queue;
   VkCommandBuffer m_copyCmdBuf;
 
+  friend VulkanTexture;
+
 private:
   void createInstance(const std::string& appName);
   void createDebugMessageCallback();
@@ -63,7 +66,9 @@ private:
   void destroyDebugMessageCallback();
   void destroyInstance();
 
-  void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+  void submitCopyCommand();
+  void copyBufferToBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+  void copyBufferToImage(VkBuffer src, VkImage dst, VkExtent3D imgExtent);
 };
 
 } // namespace lve

@@ -98,44 +98,6 @@ VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, VkExte
   }
 }
 
-VkImageView CreateImageView(
-  VkDevice device,
-  VkImage image,
-  VkFormat format,
-  VkImageAspectFlags aspectFlags,
-  VkImageViewType viewType,
-  u32 layerCount,
-  u32 mipLevels
-) {
-  VkImageViewCreateInfo viewCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = 0,
-    .image = image,
-    .viewType = viewType,
-    .format = format,
-    .components = {
-      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-    },
-    .subresourceRange = {
-      .aspectMask = aspectFlags,
-      .baseMipLevel = 0,
-      .levelCount = mipLevels,
-      .baseArrayLayer = 0,
-      .layerCount = layerCount,
-    },
-  };
-
-  VkImageView imageView;
-  VkResult res = vkCreateImageView(device, &viewCreateInfo, nullptr, &imageView);
-  CHECK_VK_RESULT(res, "vkCreateImageView");
-
-  return imageView;
-}
-
 } // namespace
 
 VulkanCore::~VulkanCore() {
@@ -174,7 +136,7 @@ void VulkanCore::createCommandBufferPool() {
   VkCommandPoolCreateInfo cmdPoolCreateInfo{
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
     .pNext = nullptr,
-    .flags = 0,
+    .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
     .queueFamilyIndex = m_queueFamily
   };
 
@@ -260,7 +222,7 @@ VulkanBufferAndMemory VulkanCore::createVertexBuffer(const void* vertices, size_
   VulkanBufferAndMemory vertexBuffer = VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
 
   // Step 6: copy the staging buffer to the final buffer
-  copyBuffer(stagingVertexBuffer.m_buffer, vertexBuffer.m_buffer, size);
+  copyBufferToBuffer(stagingVertexBuffer.m_buffer, vertexBuffer.m_buffer, size);
 
   // Step 7: release the resources of the staging buffer
   stagingVertexBuffer.destroy(m_device);
@@ -467,13 +429,8 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
   res = vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImaages, m_images.data());
   CHECK_VK_RESULT(res, "vkGetSwapchainImagesKHR (2)");
 
-  u32 layerCount = 1;
-  u32 mipLevels = 1;
-
   for (u32 i = 0; i < numSwapchainImaages; i++)
-    m_imageViews[i] = CreateImageView(
-      m_device, m_images[i], m_swapchainSurfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, layerCount, mipLevels
-    );
+    m_imageViews[i] = wrappers::createImageView(m_device, m_images[i], m_swapchainSurfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void VulkanCore::createQueue() {
@@ -526,7 +483,13 @@ void VulkanCore::destroyDebugMessageCallback() {
   dprint("Destroyed message callback");
 }
 
-void VulkanCore::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+void VulkanCore::submitCopyCommand() {
+  vkEndCommandBuffer(m_copyCmdBuf);
+  m_queue.submitSync(m_copyCmdBuf);
+  m_queue.waitIdle();
+}
+
+void VulkanCore::copyBufferToBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
   wrappers::beginCommandBuffer(m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
   VkBufferCopy bufferCopy{
@@ -536,10 +499,30 @@ void VulkanCore::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
   };
 
   vkCmdCopyBuffer(m_copyCmdBuf, src, dst, 1, &bufferCopy);
-  vkEndCommandBuffer(m_copyCmdBuf);
 
-  m_queue.submitSync(m_copyCmdBuf);
-  m_queue.waitIdle();
+  submitCopyCommand();
+}
+
+void VulkanCore::copyBufferToImage(VkBuffer src, VkImage dst, VkExtent3D imgExtent) {
+  wrappers::beginCommandBuffer(m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+  VkBufferImageCopy bufferImageCopy{
+    .bufferOffset = 0,
+    .bufferRowLength = 0,
+    .bufferImageHeight = 0,
+    .imageSubresource = VkImageSubresourceLayers{
+      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .mipLevel = 0,
+      .baseArrayLayer = 0,
+      .layerCount = 1
+    },
+    .imageOffset = {},
+    .imageExtent = imgExtent,
+  };
+
+  vkCmdCopyBufferToImage(m_copyCmdBuf, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+
+  submitCopyCommand();
 }
 
 } // namespace lve

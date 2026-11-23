@@ -2,29 +2,6 @@
 
 namespace lve {
 
-namespace {
-
-u32 GetMemoryTypeIndex(
-  const VkPhysicalDeviceMemoryProperties& physDeviceMemProps,
-  u32 memTypeBitsMask,
-  VkMemoryPropertyFlags reqMemPropFlags
-) {
-  for (u32 i = 0; i < physDeviceMemProps.memoryTypeCount; i++) {
-    const VkMemoryType& memType = physDeviceMemProps.memoryTypes[i];
-    u32 currBitMask = 1 << i;
-    bool isCurrMemTypeSupported = memTypeBitsMask & currBitMask;
-    bool hasRequiredProps = (memType.propertyFlags & reqMemPropFlags) == reqMemPropFlags;
-
-    if (isCurrMemTypeSupported && hasRequiredProps)
-      return i;
-  }
-
-  error("[GetMemoryTypeIndex] Can't find memory type for type [{:#x}], requested mem props: [{:#x}]", memTypeBitsMask, reqMemPropFlags);
-  __builtin_unreachable();
-}
-
-} // namespace
-
 VulkanBufferAndMemory VulkanBufferAndMemory::createBuffer(
   VkDevice device,
   const VkPhysicalDeviceMemoryProperties& physDeviceMemProps,

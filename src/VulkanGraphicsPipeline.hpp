@@ -41,7 +41,7 @@ private:
   );
 
   void createDescriptorPool(u32 numImages);
-  void createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers);
+  void createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers, VulkanTexture* tex);
   void allocateDescriptorSets(u32 numImages);
 
   void updateDescriptorSets(

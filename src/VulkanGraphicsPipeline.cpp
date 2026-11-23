@@ -162,19 +162,23 @@ void VulkanGraphicsPipeline::createDescriptorSets(
   size_t uniformDataSize
 ) {
   createDescriptorPool(numImages);
-  createDescriptorSetLayout(uniformBuffers);
+  createDescriptorSetLayout(uniformBuffers, mesh->m_tex);
   allocateDescriptorSets(numImages);
   updateDescriptorSets(mesh, numImages, uniformBuffers, uniformDataSize);
 }
 
 void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
-  std::array<VkDescriptorPoolSize, 2> poolSizes = {
+  std::array<VkDescriptorPoolSize, 3> poolSizes = {
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
       .descriptorCount = numImages,
     },
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = numImages,
+    },
+    VkDescriptorPoolSize{
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
       .descriptorCount = numImages,
     },
   };
@@ -193,7 +197,7 @@ void VulkanGraphicsPipeline::createDescriptorPool(u32 numImages) {
   dprint("Created descriptor pool");
 }
 
-void VulkanGraphicsPipeline::createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers) {
+void VulkanGraphicsPipeline::createDescriptorSetLayout(const std::vector<VulkanBufferAndMemory>& uniformBuffers, VulkanTexture* tex) {
   std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {
     VkDescriptorSetLayoutBinding{
       .binding = 0,
@@ -210,6 +214,16 @@ void VulkanGraphicsPipeline::createDescriptorSetLayout(const std::vector<VulkanB
       .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
       .descriptorCount = 1,
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+      .pImmutableSamplers = nullptr,
+    });
+  }
+
+  if (tex) {
+    layoutBindings.push_back({
+      .binding = 2,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       .pImmutableSamplers = nullptr,
     });
   }
@@ -264,6 +278,13 @@ void VulkanGraphicsPipeline::updateDescriptorSets(
     };
   }
 
+  VkDescriptorImageInfo imageInfo{};
+  if (mesh->m_tex) {
+    imageInfo.sampler = mesh->m_tex->m_sampler;
+    imageInfo.imageView = mesh->m_tex->m_imageView;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  }
+
   VkWriteDescriptorSet defaultWriteDescriptorSet{};
   defaultWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   defaultWriteDescriptorSet.dstArrayElement = 0;
@@ -274,7 +295,8 @@ void VulkanGraphicsPipeline::updateDescriptorSets(
   // One buffer used for all [numImages]
   u32 vertexWriteDescriptors = numImages;
   u32 uniformWriteDescriptors = numImages * !uniformBuffers.empty();
-  u32 totalWrtieDescriptors = vertexWriteDescriptors + uniformWriteDescriptors;
+  u32 textureWriteDescriptors = numImages * bool(mesh->m_tex);
+  u32 totalWrtieDescriptors = vertexWriteDescriptors + uniformWriteDescriptors + textureWriteDescriptors;
   std::vector<VkWriteDescriptorSet> writeDescriptorSets(totalWrtieDescriptors, defaultWriteDescriptorSet);
 
   for (u32 i = 0; i < numImages; i++) {
@@ -290,6 +312,14 @@ void VulkanGraphicsPipeline::updateDescriptorSets(
       descUniform.dstSet = m_descriptorSets[i];
       descUniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       descUniform.pBufferInfo = &uniformBufferInfos[i];
+    }
+
+    if (mesh->m_tex) {
+      auto& descUniform = writeDescriptorSets[i + vertexWriteDescriptors + uniformWriteDescriptors];
+      descUniform.dstBinding = 2;
+      descUniform.dstSet = m_descriptorSets[i];
+      descUniform.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descUniform.pImageInfo = &imageInfo;
     }
   }
 
