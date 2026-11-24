@@ -5,7 +5,7 @@
 #include "VulkanQueue.hpp"
 #include "VulkanShader.hpp"
 #include "VulkanGraphicsPipeline.hpp"
-#include "Camera.hpp"
+#include "../Camera.hpp"
 
 namespace lve {
 

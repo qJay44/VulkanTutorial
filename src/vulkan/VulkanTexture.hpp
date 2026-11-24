@@ -12,6 +12,7 @@ struct VulkanTexture {
   VkSampler m_sampler     = VK_NULL_HANDLE;
 
   void load(const fspath& path);
+  void load(u32 bufferSize, void* data);
   void destroy();
 };
 

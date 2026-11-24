@@ -290,7 +290,25 @@ void VulkanCore::createTexture(const fspath& path, VulkanTexture* tex) {
   dprint("Created texture from [{}]", path.string());
 }
 
-VkFormat VulkanCore::getDepthFormat() const { return m_physDevices.selected().m_depthFormat; }
+void VulkanCore::createTextureFromData(const void* pixels, VkExtent3D imageExtent, VulkanTexture* tex) {
+  VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+  createTextureImageData(tex, pixels, imageExtent, format);
+
+  VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+  tex->m_imageView = wrappers::createImageView(m_device, tex->m_image, format, aspectFlags);
+
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  tex->m_sampler = wrappers::createTextureSampler(m_device, magFilter, minFilter, addressMode);
+
+  dprint("Created texture from data");
+}
+
+VkFormat VulkanCore::getDepthFormat() const {
+  return m_physDevices.selected().m_depthFormat;
+}
 
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer *cmdBufs) {
   m_queue.waitIdle();

@@ -19,6 +19,7 @@ public:
   void createUniformBuffers(std::vector<VulkanBufferAndMemory>& ubos, size_t size);
   VulkanBufferAndMemory createUniformBuffer(size_t size);
   void createTexture(const fspath& path, VulkanTexture* tex);
+  void createTextureFromData(const void* pixels, VkExtent3D imageExtent, VulkanTexture* tex);
 
   VkDevice& getDevice();
   u32 getNumImages() const;

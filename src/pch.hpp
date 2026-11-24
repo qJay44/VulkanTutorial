@@ -58,6 +58,5 @@ using glm::mat2;
 #include <variant>
 #include <vector>
 
-#include "vkutils.hpp"
-#include "vkwrappers.hpp"
-
+#include "vulkan/vkutils.hpp"
+#include "vulkan/vkwrappers.hpp"
