@@ -30,6 +30,18 @@ std::string StringifyMemoryProperty(VkMemoryPropertyFlags flags) {
   return propsStr;
 }
 
+VkFormat FindDepthFormat(VkPhysicalDevice physDevice) {
+  std::vector<VkFormat> candidates = {
+    VK_FORMAT_D32_SFLOAT,
+    VK_FORMAT_D32_SFLOAT_S8_UINT,
+    VK_FORMAT_D24_UNORM_S8_UINT,
+  };
+
+  VkFormat depthFormat = utils::FindSupportedFormat(physDevice, candidates, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+  return depthFormat;
+}
+
 } // namespace
 
 VulkanPhysicalDevices::VulkanPhysicalDevices() {
@@ -37,7 +49,6 @@ VulkanPhysicalDevices::VulkanPhysicalDevices() {
 
 VulkanPhysicalDevices::~VulkanPhysicalDevices() {
 }
-
 
 void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR& surface) {
   u32 numDevices = 0;
@@ -55,10 +66,10 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
   for (u32 i = 0; i < numDevices; i++) {
     PhysicalDevice& currDevice = m_devices[i];
 
-    VkPhysicalDevice physDev = devicesHandles[i];
-    currDevice.m_physDevice = physDev;
+    VkPhysicalDevice physDevice = devicesHandles[i];
+    currDevice.m_physDevice = physDevice;
 
-    vkGetPhysicalDeviceProperties(physDev, &currDevice.m_devProps);
+    vkGetPhysicalDeviceProperties(physDevice, &currDevice.m_devProps);
     dprint("Device name: [{}]", currDevice.m_devProps.deviceName);
     u32 apiVer = currDevice.m_devProps.apiVersion;
     dprint("\tAPI version: {}.{}.{}.{}",
@@ -69,13 +80,13 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
     );
 
     u32 numQFamilies = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physDev, &numQFamilies, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &numQFamilies, nullptr);
     dprint("\tNum of family queues: [{}]", numQFamilies);
 
     currDevice.m_qFamilyProps.resize(numQFamilies);
     currDevice.m_qSupportsPresent.resize(numQFamilies);
 
-    vkGetPhysicalDeviceQueueFamilyProperties(physDev, &numQFamilies, currDevice.m_qFamilyProps.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &numQFamilies, currDevice.m_qFamilyProps.data());
 
     for (u32 q = 0; q < numQFamilies; q++) {
       const VkQueueFamilyProperties& QFamilyProp = currDevice.m_qFamilyProps[q];
@@ -93,18 +104,18 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
 
       dprint(msg);
 
-      res = vkGetPhysicalDeviceSurfaceSupportKHR(physDev, q, surface, &currDevice.m_qSupportsPresent[q]);
+      res = vkGetPhysicalDeviceSurfaceSupportKHR(physDevice, q, surface, &currDevice.m_qSupportsPresent[q]);
       CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfaceSupportKHR");
     }
 
     u32 numFormats = 0;
-    res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDev, surface, &numFormats, nullptr);
+    res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &numFormats, nullptr);
     CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfaceFormatsKHR (1)");
     assert(numFormats);
 
     currDevice.m_surfaceFormats.resize(numFormats);
 
-    res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDev, surface, &numFormats, currDevice.m_surfaceFormats.data());
+    res = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &numFormats, currDevice.m_surfaceFormats.data());
     CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfaceFormatsKHR (2)");
 
     // Just too much of them, uncomment when needed
@@ -113,25 +124,25 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
     //   dprint("\tFormat: [{:#010x}], color space: [{:#010x}]", (s32)surfaceFormat.format, (s32)surfaceFormat.colorSpace);
     // }
 
-    res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDev, surface, &currDevice.m_surfaceCaps);
+    res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &currDevice.m_surfaceCaps);
     CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
 
     PrintImageUsageFlags(currDevice.m_surfaceCaps.supportedUsageFlags);
 
     u32 numPresentModes = 0;
 
-    res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDev, surface, &numPresentModes, nullptr);
+    res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &numPresentModes, nullptr);
     CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfacePresentModesKHR (1)");
     assert(numPresentModes);
 
     currDevice.m_presentModes.resize(numPresentModes);
 
-    res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDev, surface, &numPresentModes, currDevice.m_presentModes.data());
+    res = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &numPresentModes, currDevice.m_presentModes.data());
     CHECK_VK_RESULT(res, "vkGetPhysicalDeviceSurfacePresentModesKHR (2)");
 
     dprint("Num presentation modes: [{}]", numPresentModes);
 
-    vkGetPhysicalDeviceMemoryProperties(physDev, &currDevice.m_memProps);
+    vkGetPhysicalDeviceMemoryProperties(physDevice, &currDevice.m_memProps);
 
     dprint("Num memory types: [{}]", currDevice.m_memProps.memoryTypeCount);
 
@@ -148,6 +159,8 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
     dprint("Num heap types: [{}]\n", currDevice.m_memProps.memoryHeapCount);
 
     vkGetPhysicalDeviceFeatures(currDevice.m_physDevice, &currDevice.m_features);
+
+    currDevice.m_depthFormat = FindDepthFormat(physDevice);
   }
 }
 

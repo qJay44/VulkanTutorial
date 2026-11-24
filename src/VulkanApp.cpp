@@ -1,7 +1,6 @@
 #include "VulkanApp.hpp"
 
 #include "utils/utils.hpp"
-#include "wrappers.hpp"
 
 namespace lve {
 
@@ -59,7 +58,7 @@ VulkanApp::VulkanApp(const char* appName) {
   createPipeline(m_window);
 
   allocateCommandBuffers();
-  recordCommandBuffers(GetWindowExtent(m_window));
+  recordCommandBuffers(utils::GetWindowExtent(m_window));
 
   m_camera.pos.z = -2.f;
   m_camera.yaw = glm::radians(90.f);
@@ -84,7 +83,7 @@ void VulkanApp::mouseMoveCallback(vec2 mousePos) {
   constexpr float pi = glm::pi<float>();
   constexpr float pi_2 = pi * 0.5f;
 
-  auto extent = GetWindowExtent(m_window);
+  auto extent = utils::GetWindowExtent(m_window);
 
   vec2 winSize{extent.width, extent.height};
   vec2 winCenter = winSize * 0.5f;
@@ -99,7 +98,7 @@ void VulkanApp::mouseMoveCallback(vec2 mousePos) {
 }
 
 void VulkanApp::render() {
-  VkExtent2D windowExtent = GetWindowExtent(m_window);
+  VkExtent2D windowExtent = utils::GetWindowExtent(m_window);
   float aspect = (float)windowExtent.width / windowExtent.height;
   m_camera.setPerspectiveProjection(glm::radians(60.f), aspect, 0.1f, 100.f);
 
@@ -126,21 +125,39 @@ void VulkanApp::render() {
 }
 
 void VulkanApp::createSimpleRenderPass() {
-  VkAttachmentDescription attachDesc{
-    .flags = 0,
-    .format = m_core.getSwapchainSurfaceFormat().format,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  std::vector<VkAttachmentDescription> attachDescs = {
+    {
+      .flags = 0,
+      .format = m_core.getSwapchainSurfaceFormat().format,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    },
+    {
+      .flags = 0,
+      .format = m_core.getDepthFormat(),
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    },
   };
 
-  VkAttachmentReference attachRef{
+  VkAttachmentReference colorAttachRef{
     .attachment = 0,
     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  };
+
+  VkAttachmentReference depthAttachRef{
+    .attachment = 1,
+    .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
   };
 
   VkSubpassDescription subpassDesc{
@@ -149,9 +166,9 @@ void VulkanApp::createSimpleRenderPass() {
     .inputAttachmentCount = 0,
     .pInputAttachments = nullptr,
     .colorAttachmentCount = 1,
-    .pColorAttachments = &attachRef,
+    .pColorAttachments = &colorAttachRef,
     .pResolveAttachments = nullptr,
-    .pDepthStencilAttachment = nullptr,
+    .pDepthStencilAttachment = &depthAttachRef,
     .preserveAttachmentCount = 0,
     .pPreserveAttachments = nullptr,
   };
@@ -160,8 +177,8 @@ void VulkanApp::createSimpleRenderPass() {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
-    .attachmentCount = 1,
-    .pAttachments = &attachDesc,
+    .attachmentCount = static_cast<u32>(attachDescs.size()),
+    .pAttachments = attachDescs.data(),
     .subpassCount = 1,
     .pSubpasses = &subpassDesc,
     .dependencyCount = 0,
@@ -176,7 +193,7 @@ void VulkanApp::createSimpleRenderPass() {
 void VulkanApp::createFramebuffers() {
   m_framebuffers.resize(m_core.getNumImages());
 
-  VkExtent2D windowExtent = GetWindowExtent(m_window);
+  VkExtent2D windowExtent = utils::GetWindowExtent(m_window);
   VkResult res;
 
   VkFramebufferCreateInfo fbCreateInfo{
@@ -184,15 +201,20 @@ void VulkanApp::createFramebuffers() {
     .pNext = nullptr,
     .flags = 0,
     .renderPass = m_renderPass,
-    .attachmentCount = 1,
+    .attachmentCount = 2,    // Color and Depth
     .pAttachments = nullptr, // Assigned in the loop
     .width = windowExtent.width,
     .height = windowExtent.height,
     .layers = 1,
   };
 
+  std::array<VkImageView, 2> attachments;
+
   for (u32 i = 0; i < m_core.getNumImages(); i++) {
-    fbCreateInfo.pAttachments = &m_core.getImageView(i);
+    attachments[0] = m_core.getImageView(i);
+    attachments[1] = m_core.getDepthImageView(i);
+
+    fbCreateInfo.pAttachments = attachments.data();
 
     res = vkCreateFramebuffer(m_device, &fbCreateInfo, nullptr, &m_framebuffers[i]);
     CHECK_VK_RESULT(res, "vkCreateFramebuffer");
@@ -207,6 +229,7 @@ void VulkanApp::createShaders() {
 }
 
 void VulkanApp::createMesh() {
+  m_mesh.m_tex = new VulkanTexture(&m_core);
   loadVertexBuffer();
   loadTexture();
 }
@@ -224,6 +247,13 @@ void VulkanApp::loadVertexBuffer() {
     {{ 1.0f,  1.0f,  0.0f}, {1.f, 1.f}},
     {{-1.0f,  1.0f,  0.0f}, {0.f, 1.f}},
     {{-1.0f, -1.0f,  0.0f}, {0.f, 0.f}},
+
+    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}},
+    {{ 1.0f, -1.0f,  5.0f}, {1.f, 0.f}},
+    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}},
+    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}},
+    {{-1.0f,  1.0f,  5.0f}, {0.f, 1.f}},
+    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}},
   };
 
   m_mesh.m_vertexBufferSize = sizeof(vertices[0]) * vertices.size();
@@ -232,12 +262,12 @@ void VulkanApp::loadVertexBuffer() {
 }
 
 void VulkanApp::loadTexture() {
-  m_mesh.m_tex = new VulkanTexture();
-  m_mesh.m_tex->create(&m_core, "res/tex/debug/uvChecker.jpg");
+  m_mesh.m_tex->load("res/tex/debug/uvChecker.jpg");
 }
 
 void VulkanApp::createUniformBuffers() {
   m_core.createUniformBuffers(m_uniformBuffers, sizeof(UniformData));
+  dprint("Created uniform buffers");
 }
 
 void VulkanApp::createPipeline(GLFWwindow* window) {
@@ -260,9 +290,9 @@ void VulkanApp::allocateCommandBuffers() {
 }
 
 void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
-  VkClearColorValue clearColor{{0.01f, 0.01f, 0.01f, 0.f}};
-  VkClearValue clearValue{};
-  clearValue.color = clearColor;
+  std::array<VkClearValue, 2> clearValues{};
+  clearValues[0].color = {{0.01f, 0.01f, 0.01f, 1.f}};
+  clearValues[1].depthStencil = {1.f, 0};
 
   VkRenderPassBeginInfo renderPassBeginInfo{
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -276,8 +306,8 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
       },
       .extent = windowExtent,
     },
-    .clearValueCount = 1,
-    .pClearValues = &clearValue,
+    .clearValueCount = static_cast<u32>(clearValues.size()),
+    .pClearValues = clearValues.data(),
   };
 
   for (size_t i = 0; i < m_cmdBufs.size(); i++) {
@@ -289,7 +319,7 @@ void VulkanApp::recordCommandBuffers(VkExtent2D windowExtent) {
 
     m_pipeline.bind(m_cmdBufs[i], i);
 
-    u32 vertexCount = 6;
+    u32 vertexCount = 12;
     u32 instanceCount = 1;
     u32 firstVertex = 0;
     u32 firstInstance = 0;

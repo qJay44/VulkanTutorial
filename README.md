@@ -17,11 +17,12 @@
 
 ###### ogldev:
 
-* Creating VkInstance with hardcoded extensions (instead of quering them)
-* Hardcoded Vulkan version (instead of quering latest available version)
-* Selecting first available physical device (instead of using score system)
+* No resize callback
+* Creating VkInstance with hardcoded extensions (instead of quering them?)
+* Hardcoded Vulkan version (instead of quering latest available version?)
+* Selecting first available physical device (instead of using score system?)
 
 ###### brendan-galea:
 
-* Selecting first available physical device (instead of using score system)
+* Selecting first available physical device (instead of using score system?)
 

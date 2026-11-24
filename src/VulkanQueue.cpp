@@ -1,7 +1,5 @@
 #include "VulkanQueue.hpp"
 
-#include "wrappers.hpp"
-
 namespace lve {
 
 void VulkanQueue::init(VkDevice device, VkSwapchainKHR swapchain, u32 queueFamily, u32 queueIndex) {

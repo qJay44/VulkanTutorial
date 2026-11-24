@@ -2,23 +2,19 @@
 
 namespace lve {
 
-class VulkanTexture {
-public:
-  void create(class VulkanCore* core,  const fspath& path);
-  void destroy();
+struct VulkanTexture {
+  VulkanTexture(class VulkanCore* core); // NOTE: I don't like this
 
-private:
   VulkanCore* m_core = nullptr;
   VkImage m_image = VK_NULL_HANDLE;
   VkImageView m_imageView = VK_NULL_HANDLE;
   VkDeviceMemory m_mem = VK_NULL_HANDLE;
   VkSampler m_sampler = VK_NULL_HANDLE;
 
-  friend class VulkanGraphicsPipeline;
+  void load(const fspath& path);
+  void destroy();
 
-private:
   void transitionImageLayout(VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-
   void createTextureImageData(const void* pixels, VkExtent3D extent, VkFormat format);
   void createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlagBits usage, VkMemoryPropertyFlagBits propertyFlags);
   void updateTextureImage(VkExtent3D extent, VkFormat format, const void* pixels);

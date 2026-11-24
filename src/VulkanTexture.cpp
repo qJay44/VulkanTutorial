@@ -3,7 +3,6 @@
 #include "VulkanCore.hpp"
 #include "VulkanBufferAndMemory.hpp"
 #include "stb/stb_image.h"
-#include "wrappers.hpp"
 
 namespace lve {
 
@@ -23,8 +22,10 @@ u32 GetBytesPerTexFormat(VkFormat format) {
 
 } // namespace
 
-void VulkanTexture::create(VulkanCore* core, const fspath& path) {
-  m_core = core;
+VulkanTexture::VulkanTexture(class VulkanCore *core) : m_core(core) {}
+
+void VulkanTexture::load(const fspath& path) {
+  assert(m_core);
 
   int imageWidth = 0;
   int imageHeight = 0;
@@ -63,19 +64,30 @@ void VulkanTexture::create(VulkanCore* core, const fspath& path) {
 }
 
 void VulkanTexture::destroy() {
-  vkDestroySampler(m_core->m_device, m_sampler, nullptr);
-  vkDestroyImageView(m_core->m_device, m_imageView, nullptr);
-  vkDestroyImage(m_core->m_device, m_image, nullptr);
-  vkFreeMemory(m_core->m_device, m_mem, nullptr);
+  assert(m_core);
+
+  if (m_sampler != VK_NULL_HANDLE)   vkDestroySampler(m_core->m_device, m_sampler, nullptr);
+  if (m_imageView != VK_NULL_HANDLE) vkDestroyImageView(m_core->m_device, m_imageView, nullptr);
+  if (m_image != VK_NULL_HANDLE)     vkDestroyImage(m_core->m_device, m_image, nullptr);
+  if (m_mem != VK_NULL_HANDLE)       vkFreeMemory(m_core->m_device, m_mem, nullptr);
+
+  m_sampler = VK_NULL_HANDLE;
+  m_imageView = VK_NULL_HANDLE;
+  m_image = VK_NULL_HANDLE;
+  m_mem = VK_NULL_HANDLE;
 }
 
 void VulkanTexture::transitionImageLayout(VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  assert(m_core);
+
   wrappers::beginCommandBuffer(m_core->m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
   wrappers::imageMemBarrier(m_core->m_copyCmdBuf, m_image, format, oldLayout, newLayout);
   m_core->submitCopyCommand();
 }
 
 void VulkanTexture::createTextureImageData(const void* pixels, VkExtent3D extent, VkFormat format) {
+  assert(m_core);
+
   auto usage = (VkImageUsageFlagBits)(VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                       VK_IMAGE_USAGE_SAMPLED_BIT);
   VkMemoryPropertyFlagBits propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -90,6 +102,8 @@ void VulkanTexture::createImage(
   VkImageUsageFlagBits usage,
   VkMemoryPropertyFlagBits propertyFlags
 ) {
+  assert(m_core);
+
   const auto& device = m_core->m_device;
   const auto& physDeviceMemProps = m_core->m_physDevices.selected().m_memProps;
 
@@ -120,7 +134,7 @@ void VulkanTexture::createImage(
   vkGetImageMemoryRequirements(device, m_image, &memReqs);
 
   // Step 3: get the memory type index
-  u32 memTypeIndex = GetMemoryTypeIndex(physDeviceMemProps, memReqs.memoryTypeBits, propertyFlags);
+  u32 memTypeIndex = utils::GetMemoryTypeIndex(physDeviceMemProps, memReqs.memoryTypeBits, propertyFlags);
 
   // Step 4: allocate memory
   VkMemoryAllocateInfo memAllocInfo{
@@ -142,6 +156,8 @@ void VulkanTexture::updateTextureImage(
   VkFormat format,
   const void* pixels
 ) {
+  assert(m_core);
+
   const auto& device = m_core->m_device;
   const auto& physDeviceMemProps = m_core->m_physDevices.selected().m_memProps;
 

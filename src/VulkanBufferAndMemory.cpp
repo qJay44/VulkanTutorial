@@ -27,7 +27,7 @@ VulkanBufferAndMemory VulkanBufferAndMemory::createBuffer(
   buf.m_allocationSize = memReqs.size;
 
   // Step 3: get the memory type index
-  u32 memTypeIndex = GetMemoryTypeIndex(physDeviceMemProps, memReqs.memoryTypeBits, properties);
+  u32 memTypeIndex = utils::GetMemoryTypeIndex(physDeviceMemProps, memReqs.memoryTypeBits, properties);
 
   // Step 4: allocate memory
   VkMemoryAllocateInfo memAllocInfo{

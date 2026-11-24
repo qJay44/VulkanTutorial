@@ -1,4 +1,4 @@
-#include "wrappers.hpp"
+#include "vkwrappers.hpp"
 
 namespace lve::wrappers {
 
@@ -135,7 +135,7 @@ void imageMemBarrier(
     format == VK_FORMAT_D24_UNORM_S8_UINT)
   {
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (HasStencilComponent(format))
+    if (utils::HasStencilComponent(format))
       barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
   } else {
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

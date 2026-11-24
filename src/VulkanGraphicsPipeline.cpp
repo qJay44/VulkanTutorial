@@ -41,7 +41,7 @@ void VulkanGraphicsPipeline::init(
   inputAssemblyStateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   inputAssemblyStateInfo.primitiveRestartEnable = VK_FALSE;
 
-  VkExtent2D windowExtent = GetWindowExtent(window);
+  VkExtent2D windowExtent = utils::GetWindowExtent(window);
 
   VkViewport viewport{
     .x = 0.f,
@@ -80,6 +80,18 @@ void VulkanGraphicsPipeline::init(
   multisampleStateInfo.sampleShadingEnable = VK_FALSE;
   multisampleStateInfo.minSampleShading = 1.f;
 
+  VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo{};
+  depthStencilStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depthStencilStateInfo.depthTestEnable = VK_TRUE;
+  depthStencilStateInfo.depthWriteEnable = VK_TRUE;
+  depthStencilStateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+  depthStencilStateInfo.depthBoundsTestEnable = VK_FALSE;
+  depthStencilStateInfo.stencilTestEnable = VK_FALSE;
+  depthStencilStateInfo.front = {};
+  depthStencilStateInfo.back = {};
+  depthStencilStateInfo.minDepthBounds = 0.f;
+  depthStencilStateInfo.maxDepthBounds = 1.f;
+
   VkPipelineColorBlendAttachmentState blendAttachState{};
   blendAttachState.blendEnable = VK_FALSE;
   blendAttachState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -113,6 +125,7 @@ void VulkanGraphicsPipeline::init(
   pipelineInfo.pViewportState      = &viewportStateInfo;
   pipelineInfo.pRasterizationState = &rasterStateInfo;
   pipelineInfo.pMultisampleState   = &multisampleStateInfo;
+  pipelineInfo.pDepthStencilState  = &depthStencilStateInfo;
   pipelineInfo.pColorBlendState    = &blendStateInfo;
   pipelineInfo.layout = m_pipelineLayout;
   pipelineInfo.renderPass = renderPass;

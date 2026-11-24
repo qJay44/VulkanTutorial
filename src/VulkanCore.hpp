@@ -25,9 +25,11 @@ public:
   const VkSurfaceFormatKHR& getSwapchainSurfaceFormat() const;
   const VkImage& getImage(u32 index) const;
   const VkImageView& getImageView(u32 index) const;
+  const VkImageView& getDepthImageView(u32 index) const;
   VulkanQueue* getQueue();
   u32 getQueueFamily() const;
   const std::vector<VkFramebuffer>& getFramebuffers() const;
+  VkFormat getDepthFormat() const;
 
   void freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs);
 
@@ -46,6 +48,7 @@ private:
   VkCommandPool m_cmdBufPool;
   VulkanQueue m_queue;
   VkCommandBuffer m_copyCmdBuf;
+  std::vector<VulkanTexture> m_depthImages;
 
   friend VulkanTexture;
 
@@ -57,7 +60,9 @@ private:
   void createSwapchain(VkExtent2D windowExtent);
   void createCommandBufferPool();
   void createQueue();
+  void createDepthResources();
 
+  void destroyDepthResources();
   void destroyQueue();
   void destroyCommandBufferPool();
   void destroySwapchain();

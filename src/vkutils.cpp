@@ -1,12 +1,10 @@
-#pragma once
-
-namespace lve {
+namespace lve::utils {
 
 #define CHECK_VK_RESULT(res, msg) \
   if (res != VK_SUCCESS) \
     error("\n[CHECK_VK_RESULT] Error in [{}:{}]: \n[\n\n{}\n\n], code {}\n", __FILE__, __LINE__,  msg, (s32)res);
 
-inline VkExtent2D GetWindowExtent(GLFWwindow* window) {
+VkExtent2D GetWindowExtent(GLFWwindow* window) {
   int width, height;
   VkExtent2D windowExtent{};
   glfwGetWindowSize(window, &width, &height);
@@ -17,7 +15,7 @@ inline VkExtent2D GetWindowExtent(GLFWwindow* window) {
   return windowExtent;
 }
 
-inline u32 GetMemoryTypeIndex(
+u32 GetMemoryTypeIndex(
   const VkPhysicalDeviceMemoryProperties& physDeviceMemProps,
   u32 memTypeBitsMask,
   VkMemoryPropertyFlags reqMemPropFlags
@@ -36,9 +34,29 @@ inline u32 GetMemoryTypeIndex(
   __builtin_unreachable();
 }
 
-inline bool HasStencilComponent(VkFormat format) {
+bool HasStencilComponent(VkFormat format) {
   return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-} // namespace lve
+VkFormat FindSupportedFormat(
+  VkPhysicalDevice physDevice,
+  const std::vector<VkFormat>& candidates,
+  VkImageTiling tiling,
+  VkFormatFeatureFlags features
+) {
+  for (const VkFormat& format : candidates) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(physDevice, format, &props);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features))
+      return format;
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features))
+      return format;
+  }
+
+  error("[FindSupportedFormat] Failed to find supported format");
+  __builtin_unreachable();
+}
+
+} // namespace lve::utils
 

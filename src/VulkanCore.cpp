@@ -1,7 +1,6 @@
 #include "VulkanCore.hpp"
 
 #include "utils/clrp.hpp"
-#include "wrappers.hpp"
 
 namespace lve {
 
@@ -103,6 +102,7 @@ VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, VkExte
 VulkanCore::~VulkanCore() {
   freeCommandBuffers(1, &m_copyCmdBuf);
 
+  destroyDepthResources();
   destroyQueue();
   destroyCommandBufferPool();
   destroySwapchain();
@@ -120,16 +120,18 @@ void VulkanCore::init(const std::string& appName, GLFWwindow* window) {
   createSurface(window);
 
   // Init physical device here, the correspondng class Creates it and Destroys it,
-  // so no separate functions here
+  // so no dedicated functions here
   m_physDevices.init(m_instance, m_surface);
   m_queueFamily = m_physDevices.selectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
   createLogicalDevice();
-  createSwapchain(GetWindowExtent(window));
+  createSwapchain(utils::GetWindowExtent(window));
   createCommandBufferPool();
   createQueue();
 
   allocateCommandBuffers(1, &m_copyCmdBuf);
+
+  createDepthResources();
 }
 
 void VulkanCore::createCommandBufferPool() {
@@ -171,6 +173,12 @@ const VkImageView& VulkanCore::getImageView(u32 index) const {
   if (index >= m_imageViews.size())
     error("[VulkanCore::getImageView] Invalid view image index: [{}], available view images: [{}]", index, m_imageViews.size());
   return m_imageViews[index];
+}
+
+const VkImageView &VulkanCore::getDepthImageView(u32 index) const {
+  if (index >= m_depthImages.size())
+    error("[VulkanCore::getDepthImageView] Invalid view image index: [{}], available view images: [{}]", index, m_depthImages.size());
+  return m_depthImages[index].m_imageView;
 }
 
 VulkanQueue* VulkanCore::getQueue() {
@@ -244,7 +252,9 @@ VulkanBufferAndMemory VulkanCore::createUniformBuffer(size_t size) {
   return VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
 }
 
-void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs) {
+VkFormat VulkanCore::getDepthFormat() const { return m_physDevices.selected().m_depthFormat; }
+
+void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer *cmdBufs) {
   m_queue.waitIdle();
   vkFreeCommandBuffers(m_device, m_cmdBufPool, count, cmdBufs);
 }
@@ -437,6 +447,32 @@ void VulkanCore::createQueue() {
   m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
 }
 
+void VulkanCore::createDepthResources() {
+  m_depthImages.resize(getNumImages(), this);
+
+  VkExtent2D windowExtent = utils::GetWindowExtent(m_window);
+  VkExtent3D depthExtent{.width = windowExtent.width, .height = windowExtent.height, .depth = 1};
+
+  VkFormat depthFormat = m_physDevices.selected().m_depthFormat;
+  VkImageUsageFlagBits usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  VkMemoryPropertyFlagBits propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkImageLayout newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  for (VulkanTexture& img : m_depthImages) {
+    img.m_core = this;
+    img.createImage(depthExtent, depthFormat, usage, propertyFlags);
+    img.transitionImageLayout(depthFormat, oldLayout, newLayout);
+    img.m_imageView = wrappers::createImageView(m_device, img.m_image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+  }
+}
+
+void VulkanCore::destroyDepthResources() {
+  for (VulkanTexture& img : m_depthImages)
+    img.destroy();
+  dprint("Destroyed depth resources");
+}
+
 void VulkanCore::destroyQueue() {
   m_queue.destroy();
   dprint("Destroyed queue");
@@ -451,7 +487,6 @@ void VulkanCore::destroySwapchain() {
   for (auto& imageView : m_imageViews)
     vkDestroyImageView(m_device, imageView, nullptr);
   vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
-
   dprint("Destroyed image views and swapchain");
 }
 
