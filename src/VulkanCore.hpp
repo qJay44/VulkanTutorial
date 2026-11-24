@@ -18,6 +18,7 @@ public:
   VulkanBufferAndMemory createVertexBuffer(const void* vertices, size_t size);
   void createUniformBuffers(std::vector<VulkanBufferAndMemory>& ubos, size_t size);
   VulkanBufferAndMemory createUniformBuffer(size_t size);
+  void createTexture(const fspath& path, VulkanTexture* tex);
 
   VkDevice& getDevice();
   u32 getNumImages() const;
@@ -74,6 +75,11 @@ private:
   void submitCopyCommand();
   void copyBufferToBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
   void copyBufferToImage(VkBuffer src, VkImage dst, VkExtent3D imgExtent);
+
+  void transitionImageLayout(VulkanTexture* tex, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+  void createTextureImageData(VulkanTexture* tex, const void* pixels, VkExtent3D extent, VkFormat format);
+  void createImage(VulkanTexture* tex, VkExtent3D extent, VkFormat format, VkImageUsageFlagBits usage, VkMemoryPropertyFlagBits propertyFlags);
+  void updateTextureImage(VulkanTexture* tex, VkExtent3D extent, VkFormat format, const void* pixels);
 };
 
 } // namespace lve

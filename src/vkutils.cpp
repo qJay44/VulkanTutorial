@@ -58,5 +58,17 @@ VkFormat FindSupportedFormat(
   __builtin_unreachable();
 }
 
+u32 GetBytesPerTexFormat(VkFormat format) {
+  switch (format) {
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_R8G8B8A8_SRGB : return 4;
+    default:
+      error("[GetBytesPerTexFormat] Unexpected format [{}]", (s32)format);
+  }
+
+  __builtin_unreachable();
+}
+
 } // namespace lve::utils
 

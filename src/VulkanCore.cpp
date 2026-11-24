@@ -1,6 +1,7 @@
 #include "VulkanCore.hpp"
 
 #include "utils/clrp.hpp"
+#include "stb/stb_image.h"
 
 namespace lve {
 
@@ -252,6 +253,43 @@ VulkanBufferAndMemory VulkanCore::createUniformBuffer(size_t size) {
   return VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, size, usage, memProps);
 }
 
+void VulkanCore::createTexture(const fspath& path, VulkanTexture* tex) {
+  int imageWidth = 0;
+  int imageHeight = 0;
+  int imageChannels = 0;
+
+  // Step 1: load the image pixels
+  stbi_uc* pixels = stbi_load(path.string().c_str(), &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
+  if (!pixels)
+    error("[VulkanCore::createTexture] Can't load [{}]", path.string());
+
+  VkExtent3D imageExtent = {
+    .width = static_cast<u32>(imageWidth),
+    .height = static_cast<u32>(imageHeight),
+    .depth = 1,
+  };
+
+  // Step 2: create the image object and populate it with pixels
+  VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+  createTextureImageData(tex, pixels, imageExtent, format);
+
+  // Step 3: release the image pixels
+  stbi_image_free(pixels);
+
+  // Step 4: create the image view
+  VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+  tex->m_imageView = wrappers::createImageView(m_device, tex->m_image, format, aspectFlags);
+
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  // Step 5: create the texture sampler
+  tex->m_sampler = wrappers::createTextureSampler(m_device, magFilter, minFilter, addressMode);
+
+  dprint("Created texture from [{}]", path.string());
+}
+
 VkFormat VulkanCore::getDepthFormat() const { return m_physDevices.selected().m_depthFormat; }
 
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer *cmdBufs) {
@@ -459,11 +497,10 @@ void VulkanCore::createDepthResources() {
   VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   VkImageLayout newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  for (VulkanTexture& img : m_depthImages) {
-    img.m_core = this;
-    img.createImage(depthExtent, depthFormat, usage, propertyFlags);
-    img.transitionImageLayout(depthFormat, oldLayout, newLayout);
-    img.m_imageView = wrappers::createImageView(m_device, img.m_image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+  for (VulkanTexture& tex : m_depthImages) {
+    createImage(&tex, depthExtent, depthFormat, usage, propertyFlags);
+    transitionImageLayout(&tex, depthFormat, oldLayout, newLayout);
+    tex.m_imageView = wrappers::createImageView(m_device, tex.m_image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
   }
 }
 
@@ -558,6 +595,96 @@ void VulkanCore::copyBufferToImage(VkBuffer src, VkImage dst, VkExtent3D imgExte
   vkCmdCopyBufferToImage(m_copyCmdBuf, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
 
   submitCopyCommand();
+}
+
+void VulkanCore::transitionImageLayout(VulkanTexture* tex, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  wrappers::beginCommandBuffer(m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  wrappers::imageMemBarrier(m_copyCmdBuf, tex->m_image, format, oldLayout, newLayout);
+  submitCopyCommand();
+}
+
+void VulkanCore::createTextureImageData(VulkanTexture* tex, const void* pixels, VkExtent3D extent, VkFormat format) {
+  auto usage = (VkImageUsageFlagBits)(VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                      VK_IMAGE_USAGE_SAMPLED_BIT);
+  VkMemoryPropertyFlagBits propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+  createImage(tex, extent, format, usage, propertyFlags);
+  updateTextureImage(tex, extent, format, pixels);
+}
+
+void VulkanCore::createImage(
+  VulkanTexture* tex,
+  VkExtent3D extent,
+  VkFormat format,
+  VkImageUsageFlagBits usage,
+  VkMemoryPropertyFlagBits propertyFlags
+) {
+  VkImageCreateInfo imgInfo{
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .imageType = VK_IMAGE_TYPE_2D,
+    .format = format,
+    .extent = extent,
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .tiling = VK_IMAGE_TILING_OPTIMAL,
+    .usage = usage,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .queueFamilyIndexCount = 0,
+    .pQueueFamilyIndices = nullptr,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+  };
+
+  // Step 1: create the image object
+  VkResult res = vkCreateImage(m_device, &imgInfo, nullptr, &tex->m_image);
+  CHECK_VK_RESULT(res, "vkCreateImage");
+
+  // Step 2: get the buffer memory requirements
+  VkMemoryRequirements memReqs{};
+  vkGetImageMemoryRequirements(m_device, tex->m_image, &memReqs);
+
+  // Step 3: get the memory type index
+  u32 memTypeIndex = utils::GetMemoryTypeIndex(m_physDevices.selected().m_memProps, memReqs.memoryTypeBits, propertyFlags);
+
+  // Step 4: allocate memory
+  VkMemoryAllocateInfo memAllocInfo{
+    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .pNext = nullptr,
+    .allocationSize = memReqs.size,
+    .memoryTypeIndex = memTypeIndex,
+  };
+  res = vkAllocateMemory(m_device, &memAllocInfo, nullptr, &tex->m_mem);
+  CHECK_VK_RESULT(res, "vkAllocateMemory");
+
+  // Step 5: bind memory
+  res = vkBindImageMemory(m_device, tex->m_image, tex->m_mem, 0);
+  CHECK_VK_RESULT(res, "vkBindImageMemory");
+}
+
+void VulkanCore::updateTextureImage(
+  VulkanTexture* tex,
+  VkExtent3D extent,
+  VkFormat format,
+  const void* pixels
+) {
+  u32 bytesPerPixel = utils::GetBytesPerTexFormat(format);
+  u32 layerCount = 1;
+  VkDeviceSize layerSize = extent.width * extent.height * bytesPerPixel;
+  VkDeviceSize imageSize = layerSize * layerCount;
+
+  VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  auto stagingTex = VulkanBufferAndMemory::createBuffer(m_device, m_physDevices.selected().m_memProps, imageSize, usage, properties);
+  stagingTex.update(m_device, pixels, imageSize);
+
+  transitionImageLayout(tex, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  copyBufferToImage(stagingTex.m_buffer, tex->m_image, extent);
+  transitionImageLayout(tex, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  stagingTex.destroy(m_device);
 }
 
 } // namespace lve

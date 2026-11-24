@@ -23,5 +23,7 @@ VkFormat FindSupportedFormat(
   VkFormatFeatureFlags features
 );
 
+u32 GetBytesPerTexFormat(VkFormat format);
+
 } // namespace lve::utils
 
