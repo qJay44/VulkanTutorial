@@ -13,6 +13,16 @@ struct PhysicalDevice {
   std::vector<VkPresentModeKHR> m_presentModes;
   VkPhysicalDeviceFeatures m_features;
   VkFormat m_depthFormat;
+
+  struct {
+    u8 variant{};
+    u8 major{};
+    u8 minor{};
+    u8 patch{};
+  } m_apiVersion;
+  std::vector<VkExtensionProperties> m_extensions;
+
+  bool isExtensionSupported(std::string_view ext) const;
 };
 
 class VulkanPhysicalDevices {
@@ -29,6 +39,10 @@ public:
 private:
   std::vector<PhysicalDevice> m_devices;
   int m_devIndex = -1;
+
+private:
+  void populateApiVersion(PhysicalDevice& physDevice);
+  void populateExtensions(PhysicalDevice& physDevice);
 };
 
 } // namespace lve

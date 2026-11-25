@@ -26,13 +26,11 @@ void VulkanTexture::load(u32 bufferSize, void* data) {
   m_core->createTextureFromData(pixels, imageExtent, this);
 }
 
-void VulkanTexture::destroy() {
-  assert(m_core);
-
-  if (m_sampler   != VK_NULL_HANDLE) vkDestroySampler(m_core->m_device, m_sampler, nullptr);
-  if (m_imageView != VK_NULL_HANDLE) vkDestroyImageView(m_core->m_device, m_imageView, nullptr);
-  if (m_image     != VK_NULL_HANDLE) vkDestroyImage(m_core->m_device, m_image, nullptr);
-  if (m_mem       != VK_NULL_HANDLE) vkFreeMemory(m_core->m_device, m_mem, nullptr);
+void VulkanTexture::destroy(VkDevice device) {
+  if (m_sampler   != VK_NULL_HANDLE) vkDestroySampler(device, m_sampler, nullptr);
+  if (m_imageView != VK_NULL_HANDLE) vkDestroyImageView(device, m_imageView, nullptr);
+  if (m_image     != VK_NULL_HANDLE) vkDestroyImage(device, m_image, nullptr);
+  if (m_mem       != VK_NULL_HANDLE) vkFreeMemory(device, m_mem, nullptr);
 
   m_sampler   = VK_NULL_HANDLE;
   m_imageView = VK_NULL_HANDLE;

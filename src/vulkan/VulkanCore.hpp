@@ -36,6 +36,12 @@ public:
   void freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs);
 
 private:
+  struct {
+    u8 major{};
+    u8 minor{};
+    u8 patch{};
+  } m_instanceVersion;
+
   VkInstance m_instance = VK_NULL_HANDLE;
   VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
   GLFWwindow* m_window = nullptr;
@@ -52,9 +58,9 @@ private:
   VkCommandBuffer m_copyCmdBuf;
   std::vector<VulkanTexture> m_depthImages;
 
-  friend VulkanTexture;
-
 private:
+  void populateInstanceVersion();
+
   void createInstance(const std::string& appName);
   void createDebugMessageCallback();
   void createSurface(GLFWwindow* window);

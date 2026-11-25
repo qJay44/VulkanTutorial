@@ -315,7 +315,21 @@ void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer *cmdBufs) {
   vkFreeCommandBuffers(m_device, m_cmdBufPool, count, cmdBufs);
 }
 
+void VulkanCore::populateInstanceVersion() {
+  u32 instanceVersion = 0;
+  VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
+  CHECK_VK_RESULT(res, "vkEnumerateInstanceVersion");
+
+  m_instanceVersion.major = VK_API_VERSION_MAJOR(instanceVersion);
+  m_instanceVersion.minor = VK_API_VERSION_MINOR(instanceVersion);
+  m_instanceVersion.patch = VK_API_VERSION_PATCH(instanceVersion);
+
+  dprint("Vulkan loader supports version: {}.{}.{}", m_instanceVersion.major, m_instanceVersion.minor, m_instanceVersion.patch);
+}
+
 void VulkanCore::createInstance(const std::string& appName) {
+  populateInstanceVersion();
+
   std::vector<const char*> layers = {
     "VK_LAYER_KHRONOS_validation",
   };
@@ -344,7 +358,7 @@ void VulkanCore::createInstance(const std::string& appName) {
     .applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
     .pEngineName = "ogldev vulkan tutorial",
     .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
-    .apiVersion = VK_API_VERSION_1_1,
+    .apiVersion = VK_MAKE_API_VERSION(0, m_instanceVersion.major, m_instanceVersion.minor, 0),
   };
 
   VkInstanceCreateInfo createInfo = {
@@ -420,6 +434,20 @@ void VulkanCore::createLogicalDevice() {
     VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
   };
 
+  bool deviceSupportsDynamicRendering = m_physDevices.selected().isExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+  bool instance_is_1_3_or_more = m_instanceVersion.major > 1 || m_instanceVersion.minor >= 3;
+
+  if (instance_is_1_3_or_more && deviceSupportsDynamicRendering) {
+    dprint("The Vulkan instance and device support dynamic rendering as a core feature");
+  } else if (m_instanceVersion.minor == 2) {
+    if (deviceSupportsDynamicRendering)
+      deviceExtensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+    else
+      error("The system doesn't support dynamic rendering");
+  } else {
+    error("The system doesn't support dynamic rendering");
+  }
+
   if (physDevice.m_features.geometryShader == VK_FALSE)
     error("[VulkanCore::createLogicalDevice] The Geometry Shader is not supported");
 
@@ -430,9 +458,15 @@ void VulkanCore::createLogicalDevice() {
   deviceFeatures.geometryShader = VK_TRUE;
   deviceFeatures.tessellationShader = VK_TRUE;
 
+  VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+    .pNext = nullptr,
+    .dynamicRendering = VK_TRUE,
+  };
+
   VkDeviceCreateInfo deviceCreateInfo{
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .pNext = nullptr,
+    .pNext = &dynamicRenderingFeature,
     .flags = 0,
     .queueCreateInfoCount = 1,
     .pQueueCreateInfos = &qCreateInfo,
@@ -524,7 +558,7 @@ void VulkanCore::createDepthResources() {
 
 void VulkanCore::destroyDepthResources() {
   for (VulkanTexture& img : m_depthImages)
-    img.destroy();
+    img.destroy(m_device);
   dprint("Destroyed depth resources");
 }
 

@@ -11,7 +11,7 @@ layout(binding = 0) readonly buffer Vertices {
   Vertex data[];
 } ssbo_vertices;
 
-layout(binding = 1) readonly uniform UniformBuffer {
+layout(binding = 3) readonly uniform UniformBuffer {
   mat4 WVP;
 } ubo_matrices;
 

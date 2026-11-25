@@ -4,7 +4,7 @@
 #include "VulkanMesh.hpp"
 #include "VulkanQueue.hpp"
 #include "VulkanShader.hpp"
-#include "VulkanGraphicsPipeline.hpp"
+#include "VulkanGraphicsPipeline2.hpp"
 #include "../Camera.hpp"
 
 namespace lve {
@@ -24,11 +24,9 @@ private:
   VulkanQueue* m_pQueue = nullptr;
   VkDevice m_device = nullptr;
   u32 m_numImages = 0;
-  VkRenderPass m_renderPass;
-  std::vector<VkFramebuffer> m_framebuffers;
   VulkanShader m_vs;
   VulkanShader m_fs;
-  VulkanGraphicsPipeline m_pipeline;
+  VulkanGraphicsPipeline2* m_pipeline = nullptr;
   std::vector<VkCommandBuffer> m_cmdBufs;
   VulkanMesh m_mesh;
   std::vector<VulkanBufferAndMemory> m_uniformBuffers;
@@ -36,8 +34,6 @@ private:
   Camera m_camera{};
 
 private:
-  void createSimpleRenderPass();
-  void createFramebuffers();
   void createShaders();
 
   // Group
@@ -49,18 +45,19 @@ private:
   void createPipeline(GLFWwindow* window);
 
   void allocateCommandBuffers();
-  void recordCommandBuffers(VkExtent2D windowExtent);
+  void recordCommandBuffers();
   void freeCommandBuffers();
 
   void updateCameraInput(float dt);
   void updateUniformBuffers(u32 imageIndex);
 
+  void beginRendering(VkCommandBuffer cmdBuf, u32 imageIndex);
+  void endRendering(VkCommandBuffer cmdBuf);
+
   void destroyPipeline();
   void destroyUniformBuffers();
   void destroyMesh();
   void destroyShaders();
-  void destroyFramebuffers();
-  void destroySimpleRenderPass();
 };
 
 } // namespace lve

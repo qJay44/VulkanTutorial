@@ -15,7 +15,7 @@ struct VulkanMesh {
     m_vb.destroy(device);
 
     if (m_tex) {
-      m_tex->destroy();
+      m_tex->destroy(device);
       delete m_tex; m_tex = nullptr;
     }
   }

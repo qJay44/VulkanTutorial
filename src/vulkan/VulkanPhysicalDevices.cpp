@@ -50,6 +50,16 @@ VulkanPhysicalDevices::VulkanPhysicalDevices() {
 VulkanPhysicalDevices::~VulkanPhysicalDevices() {
 }
 
+bool PhysicalDevice::isExtensionSupported(std::string_view ext) const {
+  bool ret = std::ranges::find_if(m_extensions, [&ext](const VkExtensionProperties& e) {
+    return e.extensionName == ext;
+  }) != m_extensions.end();
+
+  dprint("Device extension [{}] [{}] supported", ext, ret ? "is" : "is not");
+
+  return ret;
+}
+
 void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR& surface) {
   u32 numDevices = 0;
   VkResult res = vkEnumeratePhysicalDevices(instance, &numDevices, nullptr);
@@ -71,13 +81,9 @@ void VulkanPhysicalDevices::init(const VkInstance& instance, const VkSurfaceKHR&
 
     vkGetPhysicalDeviceProperties(physDevice, &currDevice.m_devProps);
     dprint("Device name: [{}]", currDevice.m_devProps.deviceName);
-    u32 apiVer = currDevice.m_devProps.apiVersion;
-    dprint("\tAPI version: {}.{}.{}.{}",
-      VK_API_VERSION_VARIANT(apiVer),
-      VK_API_VERSION_MAJOR(apiVer),
-      VK_API_VERSION_MINOR(apiVer),
-      VK_API_VERSION_PATCH(apiVer)
-    );
+
+    populateApiVersion(currDevice);
+    populateExtensions(currDevice);
 
     u32 numQFamilies = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &numQFamilies, nullptr);
@@ -186,6 +192,36 @@ const PhysicalDevice& VulkanPhysicalDevices::selected() const {
     error("[VulkanPhysicalDevices::selected] A physical device has not been selected");
 
   return m_devices[m_devIndex];
+}
+
+void VulkanPhysicalDevices::populateApiVersion(PhysicalDevice& physDevice) {
+  u32 apiVer = physDevice.m_devProps.apiVersion;
+
+  physDevice.m_apiVersion.variant = VK_API_VERSION_MAJOR(apiVer);
+  physDevice.m_apiVersion.major   = VK_API_VERSION_MAJOR(apiVer);
+  physDevice.m_apiVersion.minor   = VK_API_VERSION_MINOR(apiVer);
+  physDevice.m_apiVersion.patch   = VK_API_VERSION_PATCH(apiVer);
+
+  dprint("\tAPI version: {}.{}.{}.{}",
+    physDevice.m_apiVersion.variant,
+    physDevice.m_apiVersion.major,
+    physDevice.m_apiVersion.minor,
+    physDevice.m_apiVersion.patch
+  );
+}
+
+void VulkanPhysicalDevices::populateExtensions(PhysicalDevice& physDevice) {
+  u32 extCount;
+  VkResult res = vkEnumerateDeviceExtensionProperties(physDevice.m_physDevice, nullptr, &extCount, nullptr);
+  CHECK_VK_RESULT(res, "vkEnumerateDeviceExtensionProperties (1)");
+
+  physDevice.m_extensions.resize(extCount);
+  res = vkEnumerateDeviceExtensionProperties(physDevice.m_physDevice, nullptr, &extCount, physDevice.m_extensions.data());
+  CHECK_VK_RESULT(res, "vkEnumerateDeviceExtensionProperties (2)");
+
+  dprint("Supported extensions:");
+  for (const auto& e : physDevice.m_extensions)
+    dprint("\t{}", e.extensionName);
 }
 
 } // namespace lve

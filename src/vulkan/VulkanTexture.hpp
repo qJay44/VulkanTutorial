@@ -13,8 +13,11 @@ struct VulkanTexture {
 
   void load(const fspath& path);
   void load(u32 bufferSize, void* data);
-  void destroy();
+  void destroy(VkDevice device);
 };
 
 } // namespace lve
+
+using BaseTexture = lve::VulkanTexture;
+using Texture = lve::VulkanTexture;
 
