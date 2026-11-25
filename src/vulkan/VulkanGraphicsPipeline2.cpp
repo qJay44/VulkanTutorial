@@ -25,7 +25,7 @@ VulkanGraphicsPipeline2::VulkanGraphicsPipeline2(
 ) : m_device(device), m_numImages(numImages)
 {
   bool isVB = true;
-  bool isIB = false;
+  bool isIB = true;
   bool isTex = true;
   bool isUniform = true;
 
@@ -187,7 +187,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
 
   std::vector<VkDescriptorBufferInfo> bufferInfo_VBs(numSubmeshes);
   std::vector<VkDescriptorBufferInfo> bufferInfo_IBs(numSubmeshes);
-  std::vector<VkDescriptorImageInfo> ImageInfos(numSubmeshes);
+  std::vector<VkDescriptorImageInfo> imageInfos(numSubmeshes);
   std::vector<std::vector<VkDescriptorBufferInfo>> bufferInfo_Uniforms(m_numImages);
 
   for (u32 submeshIdx = 0; submeshIdx < numSubmeshes; submeshIdx++) {
@@ -199,9 +199,9 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
     bufferInfo_IBs[submeshIdx].offset = modelDesc.m_ranges[submeshIdx].m_ibRange.m_offset;
     bufferInfo_IBs[submeshIdx].range  = modelDesc.m_ranges[submeshIdx].m_ibRange.m_range;
 
-    ImageInfos[submeshIdx].sampler     = modelDesc.m_materials[submeshIdx].m_sampler;
-    ImageInfos[submeshIdx].imageView   = modelDesc.m_materials[submeshIdx].m_imageView;
-    ImageInfos[submeshIdx].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfos[submeshIdx].sampler     = modelDesc.m_materials[submeshIdx].m_sampler;
+    imageInfos[submeshIdx].imageView   = modelDesc.m_materials[submeshIdx].m_imageView;
+    imageInfos[submeshIdx].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
 
   for (u32 imageIdx = 0; imageIdx < m_numImages; imageIdx++) {
@@ -268,7 +268,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &ImageInfos[submeshIdx],
+        .pImageInfo = &imageInfos[submeshIdx],
         .pBufferInfo = nullptr,
         .pTexelBufferView = nullptr,
       };
@@ -282,19 +282,24 @@ VkPipelineLayout VulkanGraphicsPipeline2::getPipelineLayout() const {
   return m_pipelineLayout;
 }
 
-void VulkanGraphicsPipeline2::createDescriptorPool(u32 numImages) {
-  std::array<VkDescriptorPoolSize, 3> poolSizes = {
+void VulkanGraphicsPipeline2::createDescriptorPool(u32 maxSets) {
+  // WARNING: All of [.descriptorCount] probably should rely on number of images
+  std::array<VkDescriptorPoolSize, 4> poolSizes = {
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = numImages,
+      .descriptorCount = maxSets,
+    },
+    VkDescriptorPoolSize{
+      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = maxSets,
     },
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = numImages,
+      .descriptorCount = maxSets,
     },
     VkDescriptorPoolSize{
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = numImages,
+      .descriptorCount = maxSets,
     },
   };
 
@@ -302,7 +307,7 @@ void VulkanGraphicsPipeline2::createDescriptorPool(u32 numImages) {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
-    .maxSets = numImages,
+    .maxSets = maxSets,
     .poolSizeCount = poolSizes.size(),
     .pPoolSizes = poolSizes.data(),
   };

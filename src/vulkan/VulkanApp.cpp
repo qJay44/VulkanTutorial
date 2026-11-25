@@ -19,10 +19,6 @@ void GLFW_CursorPosCallback(GLFWwindow* window, double x, double y) {
   app->mouseMoveCallback({x, y});
 }
 
-struct UniformData {
-  mat4 WVP{};
-};
-
 } // namespace
 
 VulkanApp::VulkanApp(const char* appName) {
@@ -51,9 +47,8 @@ VulkanApp::VulkanApp(const char* appName) {
   m_pQueue = m_core.getQueue();
 
   createShaders();
-  createUniformBuffers();
-  createMesh();
   createPipeline(m_window);
+  createModel();
 
   allocateCommandBuffers();
   recordCommandBuffers();
@@ -68,8 +63,7 @@ VulkanApp::~VulkanApp() {
   freeCommandBuffers();
 
   destroyPipeline();
-  destroyMesh();
-  destroyUniformBuffers();
+  destroyModel();
   destroyShaders();
 
   glfwDestroyWindow(m_window);
@@ -125,46 +119,42 @@ void VulkanApp::createShaders() {
   m_fs.createShaderModuleFromText(m_device, "src/shaders/test.frag");
 }
 
-void VulkanApp::createMesh() {
-  m_mesh.m_tex = new VulkanTexture(&m_core);
+void VulkanApp::createModel() {
+  m_texDebug = new VulkanTexture(&m_core);
+  m_model.init(&m_core);
   loadVertexBuffer();
   loadTexture();
+  m_model.createDescriptorSets(*m_pipeline);
 }
 
 void VulkanApp::loadVertexBuffer() {
-  struct Vertex {
-    vec3 pos;
-    vec2 tex;
+  std::vector<VulkanModel::Vertex> vertices = {
+    {{-1.0f, -1.0f,  0.0f}, {0.f, 0.f}, {}, {}, {}},
+    {{ 1.0f, -1.0f,  0.0f}, {1.f, 0.f}, {}, {}, {}},
+    {{ 1.0f,  1.0f,  0.0f}, {1.f, 1.f}, {}, {}, {}},
+    {{-1.0f,  1.0f,  0.0f}, {0.f, 1.f}, {}, {}, {}},
+
+    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}, {}, {}, {}},
+    {{ 1.0f, -1.0f,  5.0f}, {1.f, 0.f}, {}, {}, {}},
+    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}, {}, {}, {}},
+    {{-1.0f,  1.0f,  5.0f}, {0.f, 1.f}, {}, {}, {}},
   };
 
-  std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f,  0.0f}, {0.f, 0.f}},
-    {{ 1.0f, -1.0f,  0.0f}, {1.f, 0.f}},
-    {{ 1.0f,  1.0f,  0.0f}, {1.f, 1.f}},
-    {{ 1.0f,  1.0f,  0.0f}, {1.f, 1.f}},
-    {{-1.0f,  1.0f,  0.0f}, {0.f, 1.f}},
-    {{-1.0f, -1.0f,  0.0f}, {0.f, 0.f}},
+  std::vector<u32> indices = {
+    0, 1, 2,
+    2, 3, 0,
 
-    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}},
-    {{ 1.0f, -1.0f,  5.0f}, {1.f, 0.f}},
-    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}},
-    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}},
-    {{-1.0f,  1.0f,  5.0f}, {0.f, 1.f}},
-    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}},
+    4, 5, 6,
+    6, 7, 4
   };
 
-  m_mesh.m_vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-  m_mesh.m_vb = m_core.createVertexBuffer(vertices.data(), m_mesh.m_vertexBufferSize);
+  m_model.addMesh(vertices, indices);
   dprint("Created vertex buffer");
 }
 
 void VulkanApp::loadTexture() {
-  m_mesh.m_tex->load("res/tex/debug/uvChecker.jpg");
-}
-
-void VulkanApp::createUniformBuffers() {
-  m_core.createUniformBuffers(m_uniformBuffers, sizeof(UniformData));
-  dprint("Created uniform buffers");
+  m_texDebug->load("res/tex/debug/uvChecker.jpg");
+  m_model.addTexture(m_texDebug);
 }
 
 void VulkanApp::createPipeline(GLFWwindow* window) {
@@ -200,7 +190,7 @@ void VulkanApp::recordCommandBuffers() {
 
     m_pipeline->bind(m_cmdBufs[i]);
 
-    // TODO: Draw model here
+    m_model.recordCommandBuffer(m_cmdBufs[i], *m_pipeline, i);
 
     endRendering(m_cmdBufs[i]);
 
@@ -249,11 +239,8 @@ void VulkanApp::updateUniformBuffers(u32 imageIndex) {
   mat4 world{1.f};
   world = rotate;
 
-  UniformData ubo{
-    .WVP = (m_camera.proj * m_camera.view) * world,
-  };
-
-  m_uniformBuffers[imageIndex].update(m_device, &ubo, sizeof(UniformData));
+  mat4 wvp = (m_camera.proj * m_camera.view) * world;
+  m_model.update(imageIndex, wvp);
 
   foo += 0.001f;
 }
@@ -317,13 +304,10 @@ void VulkanApp::endRendering(VkCommandBuffer cmdBuf) {
 
 void VulkanApp::destroyPipeline() { delete m_pipeline; }
 
-void VulkanApp::destroyUniformBuffers() {
-  for (auto& ubo : m_uniformBuffers)
-    ubo.destroy(m_device);
-}
-void VulkanApp::destroyMesh() {
-  m_mesh.destroy(m_device);
-  dprint("Destroyed mesh");
+void VulkanApp::destroyModel() {
+  m_model.destroy();
+  m_texDebug->destroy(m_device);
+  dprint("Destroyed model");
 }
 
 void VulkanApp::destroyShaders() {

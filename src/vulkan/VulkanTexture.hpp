@@ -18,6 +18,3 @@ struct VulkanTexture {
 
 } // namespace lve
 
-using BaseTexture = lve::VulkanTexture;
-using Texture = lve::VulkanTexture;
-

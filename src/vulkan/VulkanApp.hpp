@@ -1,7 +1,7 @@
 #pragma once
 
 #include "VulkanCore.hpp"
-#include "VulkanMesh.hpp"
+#include "VulkanModel.hpp"
 #include "VulkanQueue.hpp"
 #include "VulkanShader.hpp"
 #include "VulkanGraphicsPipeline2.hpp"
@@ -28,8 +28,10 @@ private:
   VulkanShader m_fs;
   VulkanGraphicsPipeline2* m_pipeline = nullptr;
   std::vector<VkCommandBuffer> m_cmdBufs;
-  VulkanMesh m_mesh;
+  VulkanModel m_model;
   std::vector<VulkanBufferAndMemory> m_uniformBuffers;
+
+  VulkanTexture* m_texDebug = nullptr;
 
   Camera m_camera{};
 
@@ -37,11 +39,10 @@ private:
   void createShaders();
 
   // Group
-  void createMesh();
+  void createModel();
   void loadVertexBuffer();
   void loadTexture();
 
-  void createUniformBuffers();
   void createPipeline(GLFWwindow* window);
 
   void allocateCommandBuffers();
@@ -55,8 +56,7 @@ private:
   void endRendering(VkCommandBuffer cmdBuf);
 
   void destroyPipeline();
-  void destroyUniformBuffers();
-  void destroyMesh();
+  void destroyModel();
   void destroyShaders();
 };
 

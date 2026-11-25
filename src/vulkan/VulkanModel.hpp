@@ -1,54 +1,42 @@
 #pragma once
 
 #include "VulkanBufferAndMemory.hpp"
-#include "VulkanTexture.hpp"
+#include "VulkanGraphicsPipeline2.hpp"
 #include "model_desc.hpp"
+#include "VulkanTexture.hpp"
 #include "../model/CoreModel.hpp"
 
 namespace lve {
 
 class VulkanCore;
 
-class VulkanModel : public CoreModel {
+class VulkanModel : public CoreModel<VulkanTexture> {
 public:
 	VulkanModel() {}
 
-	void Destroy();
+	void init(VulkanCore* core);
+	void createDescriptorSets(VulkanGraphicsPipeline2& Pipeline);
+	void recordCommandBuffer(VkCommandBuffer cmdBuf, VulkanGraphicsPipeline2& pipeline, u32 imageIndex);
+  void addTexture(VulkanTexture* tex);
+	void addMesh(std::vector<Vertex>& vertices, std::vector<u32>& indices);
+	void update(u32 imageIndex, const mat4& transformation);
 
-	void Init(VulkanCore* pVulkanCore) { m_pVulkanCore = pVulkanCore; }
+	const VulkanBufferAndMemory* getVB() const;
+	const VulkanBufferAndMemory* getIB() const;
 
-	void CreateDescriptorSets(GraphicsPipelineV2& Pipeline);
-
-	void RecordCommandBuffer(VkCommandBuffer CmdBuf, GraphicsPipelineV2& pPipeline, int ImageIndex);
-
-	void Update(int ImageIndex, const glm::mat4& Transformation);
-
-	const VulkanBufferAndMemory* GetVB() const { return &m_vb; }
-
-	const VulkanBufferAndMemory* GetIB() const { return &m_ib; }
-
-protected:
-
-	virtual void AllocBuffers() { /* Nothing to do here */ }
-
-	virtual Texture* AllocTexture2D();
-
-	virtual void InitGeometryPost() { /* Nothing to do here */ }
-
-	virtual void PopulateBuffersSkinned(vector<SkinnedVertex>& Vertices) { assert(0); }
-
-	virtual void PopulateBuffers(vector<Vertex>& Vertices);
+	void destroy();
 
 private:
-	void UpdateModelDesc(ModelDesc& md);
-
-	VulkanCore* m_pVulkanCore = NULL;
+	VulkanCore* m_core = NULL;
 
 	VulkanBufferAndMemory m_vb;
 	VulkanBufferAndMemory m_ib;
 	std::vector<VulkanBufferAndMemory> m_uniformBuffers;
 	std::vector<std::vector<VkDescriptorSet>> m_descriptorSets;
 	size_t m_vertexSize = 0;	// sizeof(Vertex) OR sizeof(SkinnedVertex)
+
+private:
+	void updateModelDesc(ModelDesc& md);
 };
 
 } // namespace lve
