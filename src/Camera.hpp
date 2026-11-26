@@ -12,6 +12,22 @@ struct Camera {
   mat4 view{1.f};
   mat4 viewInv{1.f};
 
+
+  void mouseMoveCallback(vec2 mousePos, vec2 windowSize) {
+    constexpr float pi = glm::pi<float>();
+    constexpr float pi_2 = pi * 0.5f;
+
+    vec2 windowCenter = windowSize * 0.5f;
+    vec2 distFromCenter = mousePos - windowCenter;
+
+    vec2 delta = sensitivity * distFromCenter / windowCenter;
+    yaw += -delta.x;
+    pitch += delta.y;
+
+    yaw = glm::mod(yaw, 2.f * pi);
+    pitch = glm::clamp(pitch, -pi_2 + 0.1f, pi_2 - 0.1f);
+  }
+
   void setOrthographicProjection(float left, float right, float bottom, float top, float near, float far) {
     proj = glm::orthoLH_ZO(left, right, bottom, top, near, far);
   }

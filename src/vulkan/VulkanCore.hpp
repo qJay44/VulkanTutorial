@@ -23,6 +23,7 @@ public:
 
   VkDevice& getDevice();
   u32 getNumImages() const;
+  GLFWwindow* getWindow() const;
   const VkSwapchainKHR& getSwapchain() const;
   const VkSurfaceFormatKHR& getSwapchainSurfaceFormat() const;
   const VkImage& getImage(u32 index) const;
@@ -30,13 +31,17 @@ public:
   const VkImageView& getDepthImageView(u32 index) const;
   VulkanQueue* getQueue();
   u32 getQueueFamily() const;
-  const std::vector<VkFramebuffer>& getFramebuffers() const;
+  VkExtent2D getFramebufferSize() const;
   VkFormat getDepthFormat() const;
+
+  void beginDynamicRendering(VkCommandBuffer cmdBuf, u32 imageIndex, VkClearValue* clearColor, VkClearValue* depthDepth);
+  void endDynamicRendering(VkCommandBuffer cmdBuf);
 
   void freeCommandBuffers(u32 count, const VkCommandBuffer* cmdBufs);
 
 private:
   struct {
+    u32 bits;
     u8 major{};
     u8 minor{};
     u8 patch{};
@@ -57,6 +62,8 @@ private:
   VulkanQueue m_queue;
   VkCommandBuffer m_copyCmdBuf;
   std::vector<VulkanTexture> m_depthImages;
+
+  friend class ImGuiRenderer;
 
 private:
   void populateInstanceVersion();

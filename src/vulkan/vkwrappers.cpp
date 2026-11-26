@@ -14,6 +14,11 @@ void beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags
   CHECK_VK_RESULT(res, "vkBeginCommandBuffer");
 }
 
+void endCommandBuffer(VkCommandBuffer commandBuffer) {
+  VkResult res = vkEndCommandBuffer(commandBuffer);
+  CHECK_VK_RESULT(res, "vkEndCommandBuffer");
+}
+
 VkSemaphore createSemaphore(VkDevice device) {
   VkSemaphoreCreateInfo createInfo{
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,

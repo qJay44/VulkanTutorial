@@ -18,6 +18,21 @@ find_package(glslang REQUIRED)
 
 find_package(glfw3 REQUIRED)
 
+# ===== ImGui (GLFW with OpenGL) ================================== #
+
+add_library(ImGui_GLFW_Vulkan STATIC
+  ${IMGUI_PATH}/imgui.cpp
+  ${IMGUI_PATH}/imgui_draw.cpp
+  ${IMGUI_PATH}/imgui_tables.cpp
+  ${IMGUI_PATH}/imgui_widgets.cpp
+  ${IMGUI_PATH}/backends/imgui_impl_glfw.cpp
+  ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp
+)
+
+target_include_directories(ImGui_GLFW_Vulkan PUBLIC
+  ${IMGUI_PATH}
+)
+
 # ===== My utils ================================================== #
 
 file(GLOB_RECURSE UTILS_SOURCES ${UTILS_PATH}/src/*.cpp)
@@ -55,6 +70,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glslang::SPIRV
   glslang::glslang-default-resource-limits
   glfw
+  ImGui_GLFW_Vulkan
   Utils
 )
 

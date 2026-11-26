@@ -2,6 +2,7 @@ set(GLM_PATH   "$ENV{HOME}/Libs/glm")
 set(TOL_PATH   "$ENV{HOME}/Libs/tiny_obj_loader")
 set(STB_PATH   "$ENV{HOME}/Libs/stb")
 set(UTILS_PATH "$ENV{HOME}/Projects/utils")
+set(IMGUI_PATH "$ENV{HOME}/Libs/imgui")
 
 if(NOT WIN32 OR CYGWIN)
   string(ASCII 27 Esc)

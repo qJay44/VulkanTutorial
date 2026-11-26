@@ -25,6 +25,10 @@ u32 VulkanQueue::acquireNextImage() {
   return imageIndex;
 }
 
+VkQueue VulkanQueue::getHandle() {
+  return m_queue;
+}
+
 void VulkanQueue::submitSync(VkCommandBuffer cmdBuf) {
   VkSubmitInfo submitInfo{
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -43,6 +47,10 @@ void VulkanQueue::submitSync(VkCommandBuffer cmdBuf) {
 }
 
 void VulkanQueue::submitAsync(VkCommandBuffer cmdBuf) {
+  submitAsync(&cmdBuf, 1);
+}
+
+void VulkanQueue::submitAsync(VkCommandBuffer* cmdBufs, u32 numCmdBufs) {
   VkPipelineStageFlags waitFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
   VkSubmitInfo submitInfo{
@@ -51,8 +59,8 @@ void VulkanQueue::submitAsync(VkCommandBuffer cmdBuf) {
     .waitSemaphoreCount = 1,
     .pWaitSemaphores = &m_presentCompleteSem,
     .pWaitDstStageMask = &waitFlags,
-    .commandBufferCount = 1,
-    .pCommandBuffers = &cmdBuf,
+    .commandBufferCount = numCmdBufs,
+    .pCommandBuffers = cmdBufs,
     .signalSemaphoreCount = 1,
     .pSignalSemaphores = &m_renderCompleteSem,
   };

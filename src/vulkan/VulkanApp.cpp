@@ -7,11 +7,8 @@ namespace lve {
 namespace {
 
 void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, GLFW_TRUE);
-
-  (void)scancode;
-  (void)mods;
+  auto* app = (VulkanApp*)glfwGetWindowUserPointer(window);
+  app->keyCallback(window, key, scancode, action, mods);
 }
 
 void GLFW_CursorPosCallback(GLFWwindow* window, double x, double y) {
@@ -20,6 +17,23 @@ void GLFW_CursorPosCallback(GLFWwindow* window, double x, double y) {
 }
 
 } // namespace
+
+void VulkanApp::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+  bool pressed = action == GLFW_PRESS;
+
+  switch (key) {
+    case GLFW_KEY_ESCAPE:
+      if (pressed)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+      break;
+    case GLFW_KEY_E:
+      if (pressed)
+        m_showGui = !m_showGui;
+  }
+
+  (void)scancode;
+  (void)mods;
+}
 
 VulkanApp::VulkanApp(const char* appName) {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -51,10 +65,12 @@ VulkanApp::VulkanApp(const char* appName) {
   createModel();
 
   allocateCommandBuffers();
-  recordCommandBuffers();
+  recordCommandBuffersGeneral();
 
   m_camera.pos.z = -2.f;
   m_camera.yaw = glm::radians(90.f);
+
+  m_gui.init(&m_core, this);
 }
 
 VulkanApp::~VulkanApp() {
@@ -66,25 +82,17 @@ VulkanApp::~VulkanApp() {
   destroyModel();
   destroyShaders();
 
+  m_gui.destroy();
+
   glfwDestroyWindow(m_window);
 }
 
 void VulkanApp::mouseMoveCallback(vec2 mousePos) {
-  constexpr float pi = glm::pi<float>();
-  constexpr float pi_2 = pi * 0.5f;
+  if (m_gui.isMouseControlledByImGui())
+    return;
 
   auto extent = utils::GetWindowExtent(m_window);
-
-  vec2 winSize{extent.width, extent.height};
-  vec2 winCenter = winSize * 0.5f;
-  vec2 distFromCenter = mousePos - winCenter;
-
-  vec2 delta = m_camera.sensitivity * distFromCenter / winCenter;
-  m_camera.yaw += -delta.x;
-  m_camera.pitch += delta.y;
-
-  m_camera.yaw = glm::mod(m_camera.yaw, 2.f * pi);
-  m_camera.pitch = glm::clamp(m_camera.pitch, -pi_2 + 0.1f, pi_2 - 0.1f);
+  m_camera.mouseMoveCallback(mousePos, {extent.width, extent.height});
 }
 
 void VulkanApp::render() {
@@ -109,7 +117,16 @@ void VulkanApp::render() {
 
     updateUniformBuffers(imageIndex);
 
-    m_pQueue->submitAsync(m_cmdBufs[imageIndex]);
+    if (m_showGui) {
+      m_gui.update();
+      auto guiCmdBuf = m_gui.prepareCommandBuffer(imageIndex);
+      VkCommandBuffer cmdBufs[] = {m_cmdBufs.withGui[imageIndex], guiCmdBuf};
+
+      m_pQueue->submitAsync(&cmdBufs[0], 2);
+    } else {
+      m_pQueue->submitAsync(m_cmdBufs.withoutGui[imageIndex]);
+    }
+
     m_pQueue->present(imageIndex);
   }
 }
@@ -170,47 +187,59 @@ void VulkanApp::createPipeline(GLFWwindow* window) {
 }
 
 void VulkanApp::allocateCommandBuffers() {
-  m_cmdBufs.resize(m_numImages);
-  m_core.allocateCommandBuffers(m_numImages, m_cmdBufs.data());
+  m_cmdBufs.withGui.resize(m_numImages);
+  m_core.allocateCommandBuffers(m_numImages, m_cmdBufs.withGui.data());
+
+  m_cmdBufs.withoutGui.resize(m_numImages);
+  m_core.allocateCommandBuffers(m_numImages, m_cmdBufs.withoutGui.data());
 }
 
-void VulkanApp::recordCommandBuffers() {
-  for (size_t i = 0; i < m_cmdBufs.size(); i++) {
-    wrappers::beginCommandBuffer(m_cmdBufs[i], VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+void VulkanApp::recordCommandBuffersGeneral() {
+  recordCommandBuffers(false, m_cmdBufs.withGui);
+  recordCommandBuffers(true, m_cmdBufs.withoutGui);
+}
+
+void VulkanApp::recordCommandBuffers(bool withSecondBarrier, std::vector<VkCommandBuffer>& cmdBufs) {
+  for (size_t i = 0; i < cmdBufs.size(); i++) {
+    auto& cmdBuf = cmdBufs[i];
+
+    wrappers::beginCommandBuffer(cmdBuf, VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
     wrappers::imageMemBarrier(
-      m_cmdBufs[i],
+      cmdBuf,
       m_core.getImage(i),
       m_core.getSwapchainSurfaceFormat().format,
       VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
 
-    beginRendering(m_cmdBufs[i], i);
+    beginRendering(cmdBuf, i);
 
-    m_pipeline->bind(m_cmdBufs[i]);
+    m_pipeline->bind(cmdBuf);
 
-    m_model.recordCommandBuffer(m_cmdBufs[i], *m_pipeline, i);
+    m_model.recordCommandBuffer(cmdBuf, *m_pipeline, i);
 
-    endRendering(m_cmdBufs[i]);
+    endRendering(cmdBuf);
 
-    wrappers::imageMemBarrier(
-      m_cmdBufs[i],
-      m_core.getImage(i),
-      m_core.getSwapchainSurfaceFormat().format,
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    );
+    if (withSecondBarrier) {
+      wrappers::imageMemBarrier(
+        cmdBuf,
+        m_core.getImage(i),
+        m_core.getSwapchainSurfaceFormat().format,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+      );
+    }
 
-    VkResult res = vkEndCommandBuffer(m_cmdBufs[i]);
-    CHECK_VK_RESULT(res, "vkEndCommandBuffer");
+    wrappers::endCommandBuffer(cmdBuf);
   }
 
-  dprint("Recorded command buffers");
+  dprint("Recorded command buffers, with second barrier: [{}]", withSecondBarrier ? "Yes" : "No");
 }
 
 void VulkanApp::freeCommandBuffers() {
-  m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.size()), m_cmdBufs.data());
+  m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.withGui.size()), m_cmdBufs.withGui.data());
+  m_core.freeCommandBuffers(static_cast<u32>(m_cmdBufs.withoutGui.size()), m_cmdBufs.withoutGui.data());
   dprint("Freed command buffers");
 }
 
@@ -246,60 +275,19 @@ void VulkanApp::updateUniformBuffers(u32 imageIndex) {
 }
 
 void VulkanApp::beginRendering(VkCommandBuffer cmdBuf, u32 imageIndex) {
-  VkExtent2D windowExtent = utils::GetWindowExtent(m_window);
-
   VkClearValue clearColor{
-    .color = {{0.01f, 0.01f, 0.01f, 1.f}},
+    .color = {{m_clearColor.r, m_clearColor.g, m_clearColor.b, 1.f}},
   };
 
   VkClearValue clearDepth{
     .depthStencil = {.depth = 1.f, .stencil = 0},
   };
 
-  VkRenderingAttachmentInfoKHR colorAttachment{
-    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-    .pNext = nullptr,
-    .imageView = m_core.getImageView(imageIndex),
-    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    .resolveMode = VK_RESOLVE_MODE_NONE,
-    .resolveImageView = VK_NULL_HANDLE,
-    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .clearValue = clearColor,
-  };
-
-  VkRenderingAttachmentInfoKHR depthAttachment{
-    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-    .pNext = nullptr,
-    .imageView = m_core.getDepthImageView(imageIndex),
-    .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    .resolveMode = VK_RESOLVE_MODE_NONE,
-    .resolveImageView = VK_NULL_HANDLE,
-    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .clearValue = clearDepth,
-  };
-
-  VkRenderingInfoKHR renderingInfo{
-    .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
-    .pNext = nullptr,
-    .flags = 0,
-    .renderArea = {{0, 0}, windowExtent},
-    .layerCount = 1,
-    .viewMask = 0,
-    .colorAttachmentCount = 1,
-    .pColorAttachments = &colorAttachment,
-    .pDepthAttachment = &depthAttachment,
-    .pStencilAttachment = nullptr,
-  };
-
-  vkCmdBeginRendering(cmdBuf, &renderingInfo);
+  m_core.beginDynamicRendering(cmdBuf, imageIndex, &clearColor, &clearDepth);
 }
 
 void VulkanApp::endRendering(VkCommandBuffer cmdBuf) {
-  vkCmdEndRendering(cmdBuf);
+  m_core.endDynamicRendering(cmdBuf);
 }
 
 void VulkanApp::destroyPipeline() { delete m_pipeline; }

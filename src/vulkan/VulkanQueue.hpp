@@ -11,9 +11,11 @@ public:
   void destroy();
 
   u32 acquireNextImage();
+  VkQueue getHandle();
 
   void submitSync(VkCommandBuffer cmdBuf);
-  void submitAsync(VkCommandBuffer cmdBuf);
+  void submitAsync(VkCommandBuffer cmdBufs);
+  void submitAsync(VkCommandBuffer* cmdBufs, u32 numCmdBufs);
   void present(u32 imageIndex);
   void waitIdle();
 

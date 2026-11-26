@@ -156,6 +156,10 @@ u32 VulkanCore::getNumImages() const {
   return static_cast<u32>(m_images.size());
 }
 
+GLFWwindow* VulkanCore::getWindow() const {
+  return m_window;
+}
+
 const VkSwapchainKHR& VulkanCore::getSwapchain() const {
   return m_swapchain;
 }
@@ -186,8 +190,10 @@ VulkanQueue* VulkanCore::getQueue() {
   return &m_queue;
 }
 
-u32 VulkanCore::getQueueFamily() const {
-  return m_queueFamily;
+u32 VulkanCore::getQueueFamily() const { return m_queueFamily; }
+
+VkExtent2D VulkanCore::getFramebufferSize() const {
+  return utils::GetWindowExtent(m_window);
 }
 
 void VulkanCore::allocateCommandBuffers(u32 count, VkCommandBuffer* cmdBufs) {
@@ -310,19 +316,65 @@ VkFormat VulkanCore::getDepthFormat() const {
   return m_physDevices.selected().m_depthFormat;
 }
 
+void VulkanCore::beginDynamicRendering(VkCommandBuffer cmdBuf, u32 imageIndex, VkClearValue* clearColor, VkClearValue* clearDepth) {
+  VkRenderingAttachmentInfoKHR colorAttachment{
+    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+    .pNext = nullptr,
+    .imageView = getImageView(imageIndex),
+    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    .resolveMode = VK_RESOLVE_MODE_NONE,
+    .resolveImageView = VK_NULL_HANDLE,
+    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .loadOp = clearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .clearValue = clearColor ? *clearColor : VkClearValue{},
+  };
+
+  VkRenderingAttachmentInfoKHR depthAttachment{
+    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+    .pNext = nullptr,
+    .imageView = getDepthImageView(imageIndex),
+    .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    .resolveMode = VK_RESOLVE_MODE_NONE,
+    .resolveImageView = VK_NULL_HANDLE,
+    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .loadOp = clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .clearValue = clearDepth ? *clearDepth : VkClearValue{},
+  };
+
+  VkRenderingInfoKHR renderingInfo{
+    .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+    .pNext = nullptr,
+    .flags = 0,
+    .renderArea = {{0, 0}, utils::GetWindowExtent(m_window)},
+    .layerCount = 1,
+    .viewMask = 0,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &colorAttachment,
+    .pDepthAttachment = &depthAttachment,
+    .pStencilAttachment = nullptr,
+  };
+
+  vkCmdBeginRendering(cmdBuf, &renderingInfo);
+}
+
+void VulkanCore::endDynamicRendering(VkCommandBuffer cmdBuf) {
+  vkCmdEndRendering(cmdBuf);
+}
+
 void VulkanCore::freeCommandBuffers(u32 count, const VkCommandBuffer *cmdBufs) {
   m_queue.waitIdle();
   vkFreeCommandBuffers(m_device, m_cmdBufPool, count, cmdBufs);
 }
 
 void VulkanCore::populateInstanceVersion() {
-  u32 instanceVersion = 0;
-  VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
+  VkResult res = vkEnumerateInstanceVersion(&m_instanceVersion.bits);
   CHECK_VK_RESULT(res, "vkEnumerateInstanceVersion");
 
-  m_instanceVersion.major = VK_API_VERSION_MAJOR(instanceVersion);
-  m_instanceVersion.minor = VK_API_VERSION_MINOR(instanceVersion);
-  m_instanceVersion.patch = VK_API_VERSION_PATCH(instanceVersion);
+  m_instanceVersion.major = VK_API_VERSION_MAJOR(m_instanceVersion.bits);
+  m_instanceVersion.minor = VK_API_VERSION_MINOR(m_instanceVersion.bits);
+  m_instanceVersion.patch = VK_API_VERSION_PATCH(m_instanceVersion.bits);
 
   dprint("Vulkan loader supports version: {}.{}.{}", m_instanceVersion.major, m_instanceVersion.minor, m_instanceVersion.patch);
 }
@@ -608,7 +660,6 @@ void VulkanCore::destroyDebugMessageCallback() {
 }
 
 void VulkanCore::submitCopyCommand() {
-  vkEndCommandBuffer(m_copyCmdBuf);
   m_queue.submitSync(m_copyCmdBuf);
   m_queue.waitIdle();
 }
@@ -624,6 +675,7 @@ void VulkanCore::copyBufferToBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize siz
 
   vkCmdCopyBuffer(m_copyCmdBuf, src, dst, 1, &bufferCopy);
 
+  wrappers::endCommandBuffer(m_copyCmdBuf);
   submitCopyCommand();
 }
 
@@ -646,12 +698,14 @@ void VulkanCore::copyBufferToImage(VkBuffer src, VkImage dst, VkExtent3D imgExte
 
   vkCmdCopyBufferToImage(m_copyCmdBuf, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
 
+  wrappers::endCommandBuffer(m_copyCmdBuf);
   submitCopyCommand();
 }
 
 void VulkanCore::transitionImageLayout(VulkanTexture* tex, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
   wrappers::beginCommandBuffer(m_copyCmdBuf, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
   wrappers::imageMemBarrier(m_copyCmdBuf, tex->m_image, format, oldLayout, newLayout);
+  wrappers::endCommandBuffer(m_copyCmdBuf);
   submitCopyCommand();
 }
 

@@ -3,6 +3,7 @@
 namespace lve::wrappers {
 
 void beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags);
+void endCommandBuffer(VkCommandBuffer commandBuffer);
 VkSemaphore createSemaphore(VkDevice device);
 
 void imageMemBarrier(

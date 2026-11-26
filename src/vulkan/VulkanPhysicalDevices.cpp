@@ -219,9 +219,9 @@ void VulkanPhysicalDevices::populateExtensions(PhysicalDevice& physDevice) {
   res = vkEnumerateDeviceExtensionProperties(physDevice.m_physDevice, nullptr, &extCount, physDevice.m_extensions.data());
   CHECK_VK_RESULT(res, "vkEnumerateDeviceExtensionProperties (2)");
 
-  dprint("Supported extensions:");
-  for (const auto& e : physDevice.m_extensions)
-    dprint("\t{}", e.extensionName);
+  // dprint("Supported extensions:");
+  // for (const auto& e : physDevice.m_extensions)
+  //   dprint("\t{}", e.extensionName);
 }
 
 } // namespace lve
