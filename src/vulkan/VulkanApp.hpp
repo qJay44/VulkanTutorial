@@ -39,12 +39,12 @@ private:
   std::vector<VulkanBufferAndMemory> m_uniformBuffers;
 
   ImGuiRenderer m_gui;
-  vec3 m_clearColor{0.01f};
   bool m_showGui = true;
 
   VulkanTexture* m_texDebug = nullptr;
 
   Camera m_camera{};
+  bool m_cursorEnabled = false;
 
 private:
   void createShaders();

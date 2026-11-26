@@ -16,6 +16,29 @@ void CheckVkResult(VkResult res) {
   CHECK_VK_RESULT(res, "Vulkan ImGui error")
 }
 
+void fixGammaStyle() {
+  ImGuiStyle &style = ImGui::GetStyle();
+  // Go through every colour and convert it to linear
+  // This is because ImGui uses linear colours but we are using sRGB
+  // This is a simple approximation of the conversion
+  for (int i = 0; i < ImGuiCol_COUNT; i++) {
+    /*float linear = (srgb <= 0.04045f) ? srgb / 12.92f : pow((srgb + 0.055f)
+     * / 1.055f, 2.4f);*/
+
+    ImVec4 &col = style.Colors[i];
+    col.x = col.x <= 0.04045f ? col.x / 12.92f
+                              : pow((col.x + 0.055f) / 1.055f, 2.4f);
+    col.y = col.y <= 0.04045f ? col.y / 12.92f
+                              : pow((col.y + 0.055f) / 1.055f, 2.4f);
+    col.z = col.z <= 0.04045f ? col.z / 12.92f
+                              : pow((col.z + 0.055f) / 1.055f, 2.4f);
+  }
+}
+
+void TextVec3(const std::string& text, vec3 v) {
+  ImGui::Text((text + ": [%.2f, %.2f, %.2f]").c_str(), v.x, v.y, v.z);
+}
+
 } // namespace
 
 bool ImGuiRenderer::isMouseControlledByImGui() {
@@ -37,10 +60,23 @@ void ImGuiRenderer::update() {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-
+  ImGui::Begin("Settings", nullptr);
   ImGui::Text("Application average %.2f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
-  ImGui::ColorEdit3("Clear color", glm::value_ptr(m_app->m_clearColor));
+
+  if (ImGui::CollapsingHeader("Camera")) {
+    auto& cam = m_app->m_camera;
+
+    TextVec3("Orientation", cam.orientation);
+    TextVec3("Up", cam.up);
+
+    ImGui::Text("Application average %.2f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
+    ImGui::DragFloat3("Positon", glm::value_ptr(cam.pos));
+    ImGui::DragFloat2("Sensitivity", glm::value_ptr(cam.sensitivity));
+    ImGui::SliderAngle("Yaw", &cam.yaw);
+    ImGui::SliderAngle("Pitch", &cam.pitch);
+    ImGui::DragFloat("Speed", &cam.speed);
+    ImGui::DragFloat("Speed multiplier", &cam.speedMult);
+  }
 
   ImGui::End();
   ImGui::Render();
@@ -124,6 +160,7 @@ void ImGuiRenderer::initImGui() {
   io.DisplaySize.y = (float)m_framebufferSize.height;
 
   ImGui::GetStyle().FontScaleMain = 1.2f;
+  fixGammaStyle();
   // ImGui::StyleColorsDark();
 
   ImGui_ImplGlfw_InitForVulkan(m_core->getWindow(), true);

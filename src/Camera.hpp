@@ -12,10 +12,15 @@ struct Camera {
   mat4 view{1.f};
   mat4 viewInv{1.f};
 
-
   void mouseMoveCallback(vec2 mousePos, vec2 windowSize) {
     constexpr float pi = glm::pi<float>();
     constexpr float pi_2 = pi * 0.5f;
+
+    static bool firstMove = true;
+    if (firstMove) {
+      mousePos = windowSize * 0.5f;
+      firstMove = false;
+    }
 
     vec2 windowCenter = windowSize * 0.5f;
     vec2 distFromCenter = mousePos - windowCenter;

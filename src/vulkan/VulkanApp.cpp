@@ -20,6 +20,7 @@ void GLFW_CursorPosCallback(GLFWwindow* window, double x, double y) {
 
 void VulkanApp::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   bool pressed = action == GLFW_PRESS;
+  VkExtent2D windowExtent = utils::GetWindowExtent(window);
 
   switch (key) {
     case GLFW_KEY_ESCAPE:
@@ -29,6 +30,20 @@ void VulkanApp::keyCallback(GLFWwindow* window, int key, int scancode, int actio
     case GLFW_KEY_E:
       if (pressed)
         m_showGui = !m_showGui;
+      break;
+    case GLFW_KEY_R:
+      if (pressed) {
+        m_cursorEnabled = !m_cursorEnabled;
+
+        if (!m_cursorEnabled) {
+          glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+          glfwSetCursorPos(window, windowExtent.width * 0.5, windowExtent.height * 0.5);
+          glfwSetCursor(window, nullptr);
+        } else {
+          glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+      }
+      break;
   }
 
   (void)scancode;
@@ -52,8 +67,7 @@ VulkanApp::VulkanApp(const char* appName) {
   glfwSetWindowUserPointer(m_window, this);
   glfwSetKeyCallback(m_window, GLFW_KeyCallback);
   glfwSetCursorPosCallback(m_window, GLFW_CursorPosCallback);
-  glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-  glfwSetCursorPos(m_window, initWidth / 2.f, initHeight / 2.f);
+  glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL + !m_cursorEnabled * 2);
 
   m_core.init(appName, m_window);
   m_device = m_core.getDevice();
@@ -88,11 +102,13 @@ VulkanApp::~VulkanApp() {
 }
 
 void VulkanApp::mouseMoveCallback(vec2 mousePos) {
-  if (m_gui.isMouseControlledByImGui())
+  if (m_gui.isMouseControlledByImGui() || m_cursorEnabled)
     return;
 
   auto extent = utils::GetWindowExtent(m_window);
-  m_camera.mouseMoveCallback(mousePos, {extent.width, extent.height});
+  m_camera.mouseMoveCallback(mousePos, {extent.width , extent.height});
+
+  glfwSetCursorPos(m_window, extent.width * 0.5, extent.height * 0.5);
 }
 
 void VulkanApp::render() {
@@ -104,7 +120,6 @@ void VulkanApp::render() {
 
   while (!glfwWindowShouldClose(m_window)) {
     glfwPollEvents();
-    glfwSetCursorPos(m_window, windowExtent.width * 0.5f, windowExtent.height * 0.5f);
 
     float currTime = glfwGetTime();
     float dt = currTime - prevTime;
@@ -276,7 +291,7 @@ void VulkanApp::updateUniformBuffers(u32 imageIndex) {
 
 void VulkanApp::beginRendering(VkCommandBuffer cmdBuf, u32 imageIndex) {
   VkClearValue clearColor{
-    .color = {{m_clearColor.r, m_clearColor.g, m_clearColor.b, 1.f}},
+    .color = {{0.01f, 0.01f, 0.01f, 1.f}},
   };
 
   VkClearValue clearDepth{
