@@ -14,8 +14,8 @@ public:
   VkQueue getHandle();
 
   void submitSync(VkCommandBuffer cmdBuf);
-  void submitAsync(VkCommandBuffer cmdBufs);
-  void submitAsync(VkCommandBuffer* cmdBufs, u32 numCmdBufs);
+  void submitAsync(VkCommandBuffer cmdBufs, u32 imageIndex);
+  void submitAsync(VkCommandBuffer* cmdBufs, u32 numCmdBufs, u32 imageIndex);
   void present(u32 imageIndex);
   void waitIdle();
 

@@ -137,9 +137,9 @@ void VulkanApp::render() {
       auto guiCmdBuf = m_gui.prepareCommandBuffer(imageIndex);
       VkCommandBuffer cmdBufs[] = {m_cmdBufs.withGui[imageIndex], guiCmdBuf};
 
-      m_pQueue->submitAsync(&cmdBufs[0], 2);
+      m_pQueue->submitAsync(&cmdBufs[0], 2, imageIndex);
     } else {
-      m_pQueue->submitAsync(m_cmdBufs.withoutGui[imageIndex]);
+      m_pQueue->submitAsync(m_cmdBufs.withoutGui[imageIndex], imageIndex);
     }
 
     m_pQueue->present(imageIndex);
