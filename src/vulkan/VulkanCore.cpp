@@ -586,7 +586,7 @@ void VulkanCore::createSwapchain(VkExtent2D windowExtent) {
 }
 
 void VulkanCore::createQueue() {
-  m_queue.init(m_device, m_swapchain, m_queueFamily, 0);
+  m_queue.init(m_device, m_swapchain, m_queueFamily, 0, getNumImages());
 }
 
 void VulkanCore::createDepthResources() {
