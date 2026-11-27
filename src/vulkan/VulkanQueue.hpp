@@ -26,7 +26,6 @@ private:
   std::vector<VkSemaphore> m_imageAvailableSems;
   std::vector<VkSemaphore> m_renderFinishedSems;
   std::vector<VkFence> m_inFlightFences;
-  std::vector<VkFence> m_imagesInFlight; // "reference" to [m_inFlightFences] fences, don't call destroy on this fences
   u32 m_numImages = 0;
   u32 m_frameIndex = 0;
 

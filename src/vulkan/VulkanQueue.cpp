@@ -68,11 +68,6 @@ void VulkanQueue::submitAsync(VkCommandBuffer cmdBuf, u32 imageIndex) {
 }
 
 void VulkanQueue::submitAsync(VkCommandBuffer* cmdBufs, u32 numCmdBufs, u32 imageIndex) {
-  if (m_imagesInFlight[imageIndex] != VK_NULL_HANDLE)
-    vkWaitForFences(m_device, 1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-
-  m_imagesInFlight[imageIndex] = m_inFlightFences[m_frameIndex];
-
   VkPipelineStageFlags waitFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
   VkSubmitInfo submitInfo{
@@ -118,7 +113,6 @@ void VulkanQueue::createSyncObjects() {
   m_imageAvailableSems.resize(MAX_FRAMES_IN_FLIGHT);
   m_renderFinishedSems.resize(m_numImages);
   m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-  m_imagesInFlight.resize(m_numImages, VK_NULL_HANDLE);
 
   VkFenceCreateInfo fenceInfo{
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
