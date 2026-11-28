@@ -18,7 +18,7 @@ layout(binding = 1) readonly buffer Indices {
   uint data[];
 } ssbo_indices;
 
-layout(binding = 3) readonly uniform UniformBuffer {
+layout(binding = 2) readonly uniform UniformBuffer {
   mat4 WVP;
 } ubo_matrices;
 

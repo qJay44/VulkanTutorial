@@ -77,6 +77,7 @@ VulkanApp::VulkanApp(const char* appName) {
   createShaders();
   createPipeline(m_window);
   createModel();
+  createSkybox("res/tex/skyboxes/ect/cedar_bridge_sunset_1_4k.hdr");
 
   allocateCommandBuffers();
   recordCommandBuffersGeneral();
@@ -92,6 +93,7 @@ VulkanApp::~VulkanApp() {
 
   freeCommandBuffers();
 
+  destroySkybox();
   destroyPipeline();
   destroyModel();
   destroyShaders();
@@ -161,23 +163,23 @@ void VulkanApp::createModel() {
 
 void VulkanApp::loadVertexBuffer() {
   std::vector<VulkanModel::Vertex> vertices = {
-    {{-1.0f, -1.0f,  0.0f}, {0.f, 0.f}, {}, {}, {}},
-    {{ 1.0f, -1.0f,  0.0f}, {1.f, 0.f}, {}, {}, {}},
-    {{ 1.0f,  1.0f,  0.0f}, {1.f, 1.f}, {}, {}, {}},
-    {{-1.0f,  1.0f,  0.0f}, {0.f, 1.f}, {}, {}, {}},
+    {{-1.0f, -1.0f,  0.0f}, {0.f, 1.f}, {}, {}, {}},
+    {{ 1.0f, -1.0f,  0.0f}, {1.f, 1.f}, {}, {}, {}},
+    {{ 1.0f,  1.0f,  0.0f}, {1.f, 0.f}, {}, {}, {}},
+    {{-1.0f,  1.0f,  0.0f}, {0.f, 0.f}, {}, {}, {}},
 
-    {{-1.0f, -1.0f,  5.0f}, {0.f, 0.f}, {}, {}, {}},
-    {{ 1.0f, -1.0f,  5.0f}, {1.f, 0.f}, {}, {}, {}},
-    {{ 1.0f,  1.0f,  5.0f}, {1.f, 1.f}, {}, {}, {}},
-    {{-1.0f,  1.0f,  5.0f}, {0.f, 1.f}, {}, {}, {}},
+    {{-1.0f, -1.0f,  5.0f}, {0.f, 1.f}, {}, {}, {}},
+    {{ 1.0f, -1.0f,  5.0f}, {1.f, 1.f}, {}, {}, {}},
+    {{ 1.0f,  1.0f,  5.0f}, {1.f, 0.f}, {}, {}, {}},
+    {{-1.0f,  1.0f,  5.0f}, {0.f, 0.f}, {}, {}, {}},
   };
 
   std::vector<u32> indices = {
-    0, 1, 2,
-    2, 3, 0,
+    1, 0, 2,
+    3, 2, 0,
 
-    4, 5, 6,
-    6, 7, 4
+    5, 4, 6,
+    7, 6, 4
   };
 
   m_model.addMesh(vertices, indices);
@@ -190,15 +192,23 @@ void VulkanApp::loadTexture() {
 }
 
 void VulkanApp::createPipeline(GLFWwindow* window) {
-  m_pipeline = new VulkanGraphicsPipeline2(
-    m_device,
-    window,
-    m_vs.shaderModule,
-    m_fs.shaderModule,
-    m_numImages,
-    m_core.getSwapchainSurfaceFormat().format,
-    m_core.getDepthFormat()
-  );
+  m_pipeline = new VulkanGraphicsPipeline2(VulkanGraphicsPipeline2::PipelineDescriptor{
+    .device = m_device,
+    .window = window,
+    .vs = m_vs.shaderModule,
+    .fs = m_fs.shaderModule,
+    .numImages = m_numImages,
+    .colorFormat = m_core.getSwapchainSurfaceFormat().format,
+    .depthFormat = m_core.getDepthFormat(),
+    .isVB = true,
+    .isIB = true,
+    .isUniform = true,
+    .isTex2D = true,
+  });
+}
+
+void VulkanApp::createSkybox(const fspath &path) {
+  m_skybox.init(&m_core, path);
 }
 
 void VulkanApp::allocateCommandBuffers() {
@@ -224,6 +234,7 @@ void VulkanApp::recordCommandBuffers(bool withSecondBarrier, std::vector<VkComma
       cmdBuf,
       m_core.getImage(i),
       m_core.getSwapchainSurfaceFormat().format,
+      1,
       VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
@@ -231,8 +242,8 @@ void VulkanApp::recordCommandBuffers(bool withSecondBarrier, std::vector<VkComma
     beginRendering(cmdBuf, i);
 
     m_pipeline->bind(cmdBuf);
-
     m_model.recordCommandBuffer(cmdBuf, *m_pipeline, i);
+    m_skybox.recordCommandBuffer(cmdBuf, i);
 
     endRendering(cmdBuf);
 
@@ -241,6 +252,7 @@ void VulkanApp::recordCommandBuffers(bool withSecondBarrier, std::vector<VkComma
         cmdBuf,
         m_core.getImage(i),
         m_core.getSwapchainSurfaceFormat().format,
+        1,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
       );
@@ -270,8 +282,8 @@ void VulkanApp::updateCameraInput(float dt) {
   if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) totalMove += -right;
   if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) totalMove += -forward;
   if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) totalMove += right;
-  if (glfwGetKey(m_window, GLFW_KEY_SPACE)        == GLFW_PRESS) totalMove += -up;
-  if (glfwGetKey(m_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) totalMove += up;
+  if (glfwGetKey(m_window, GLFW_KEY_SPACE)        == GLFW_PRESS) totalMove += up;
+  if (glfwGetKey(m_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) totalMove += -up;
   if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) mult = m_camera.speedMult;
 
   m_camera.pos += totalMove * m_camera.speed * mult * dt;
@@ -283,8 +295,12 @@ void VulkanApp::updateUniformBuffers(u32 imageIndex) {
   mat4 world{1.f};
   world = rotate;
 
-  mat4 wvp = (m_camera.proj * m_camera.view) * world;
+  mat4 vp = m_camera.proj * m_camera.view;
+  mat4 vp_NoTranslate = m_camera.proj * mat4(mat3(m_camera.view));
+  mat4 wvp = vp * world;
+
   m_model.update(imageIndex, wvp);
+  m_skybox.update(imageIndex, vp_NoTranslate);
 
   foo += 0.001f;
 }
@@ -305,17 +321,24 @@ void VulkanApp::endRendering(VkCommandBuffer cmdBuf) {
   m_core.endDynamicRendering(cmdBuf);
 }
 
-void VulkanApp::destroyPipeline() { delete m_pipeline; }
+void VulkanApp::destroySkybox() {
+  m_skybox.destroy();
+}
+
+void VulkanApp::destroyPipeline() {
+  delete m_pipeline;
+}
 
 void VulkanApp::destroyModel() {
   m_model.destroy();
   m_texDebug->destroy(m_device);
+  delete m_texDebug;
   dprint("Destroyed model");
 }
 
 void VulkanApp::destroyShaders() {
-  vkDestroyShaderModule(m_device, m_vs.shaderModule, nullptr);
-  vkDestroyShaderModule(m_device, m_fs.shaderModule, nullptr);
+  m_vs.destroy(m_device);
+  m_fs.destroy(m_device);
   dprint("Destroyed shaders");
 }
 

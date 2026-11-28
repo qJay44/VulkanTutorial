@@ -27,7 +27,7 @@ struct Camera {
 
     vec2 delta = sensitivity * distFromCenter / windowCenter;
     yaw += -delta.x;
-    pitch += delta.y;
+    pitch += -delta.y;
 
     yaw = glm::mod(yaw, 2.f * pi);
     pitch = glm::clamp(pitch, -pi_2 + 0.1f, pi_2 - 0.1f);

@@ -2,53 +2,25 @@
 
 namespace lve {
 
-namespace binding {
-
-enum Binding {
-  VB = 0,
-  IB = 1,
-  Texture = 2,
-  Uniform = 3,
-  BindingCount = 4
-};
-
-} // namespace binding
-
-VulkanGraphicsPipeline2::VulkanGraphicsPipeline2(
-  VkDevice device,
-  GLFWwindow* window,
-  VkShaderModule vs,
-  VkShaderModule fs,
-  u32 numImages,
-  VkFormat colorFormat,
-  VkFormat depthFormat
-) : m_device(device), m_numImages(numImages)
+VulkanGraphicsPipeline2::VulkanGraphicsPipeline2(const PipelineDescriptor& desc)
+  : m_device(desc.device), m_numImages(desc.numImages)
 {
-  bool isVB = true;
-  bool isIB = true;
-  bool isTex = true;
-  bool isUniform = true;
+  assert(desc.isTex2D || desc.isTexCubemap ? desc.isTex2D != desc.isTexCubemap : true);
 
-  createDescriptorSetLayout(isVB, isIB, isTex, isUniform);
-  initCommon(window, vs, fs, colorFormat, depthFormat);
+  createDescriptorSetLayout(desc);
+  initCommon(desc);
 }
 
-void VulkanGraphicsPipeline2::initCommon(
-  GLFWwindow* window,
-  VkShaderModule vs,
-  VkShaderModule fs,
-  VkFormat colorFormat,
-  VkFormat depthFormat
-) {
+void VulkanGraphicsPipeline2::initCommon(const PipelineDescriptor& desc) {
   std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfos{};
   shaderStageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   shaderStageInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-  shaderStageInfos[0].module = vs;
+  shaderStageInfos[0].module = desc.vs;
   shaderStageInfos[0].pName = "main";
 
   shaderStageInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   shaderStageInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-  shaderStageInfos[1].module = fs;
+  shaderStageInfos[1].module = desc.fs;
   shaderStageInfos[1].pName = "main";
 
   VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
@@ -59,13 +31,13 @@ void VulkanGraphicsPipeline2::initCommon(
   inputAssemblyStateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   inputAssemblyStateInfo.primitiveRestartEnable = VK_FALSE;
 
-  VkExtent2D windowExtent = utils::GetWindowExtent(window);
+  VkExtent2D windowExtent = utils::GetWindowExtent(desc.window);
 
   VkViewport viewport{
     .x = 0.f,
-    .y = 0.f,
+    .y = static_cast<float>(windowExtent.height),
     .width = static_cast<float>(windowExtent.width),
-    .height = static_cast<float>(windowExtent.height),
+    .height = -static_cast<float>(windowExtent.height),
     .minDepth = 0.f,
     .maxDepth = 1.f,
   };
@@ -88,8 +60,8 @@ void VulkanGraphicsPipeline2::initCommon(
   VkPipelineRasterizationStateCreateInfo rasterStateInfo{};
   rasterStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   rasterStateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-  rasterStateInfo.cullMode = VK_CULL_MODE_NONE;
-  rasterStateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  rasterStateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterStateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
   rasterStateInfo.lineWidth = 1.f;
 
   VkPipelineMultisampleStateCreateInfo multisampleStateInfo{};
@@ -102,7 +74,7 @@ void VulkanGraphicsPipeline2::initCommon(
   depthStencilStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
   depthStencilStateInfo.depthTestEnable = VK_TRUE;
   depthStencilStateInfo.depthWriteEnable = VK_TRUE;
-  depthStencilStateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+  depthStencilStateInfo.depthCompareOp = desc.depthCompareOp;
   depthStencilStateInfo.depthBoundsTestEnable = VK_FALSE;
   depthStencilStateInfo.stencilTestEnable = VK_FALSE;
   depthStencilStateInfo.front = {};
@@ -134,8 +106,8 @@ void VulkanGraphicsPipeline2::initCommon(
     .pNext = nullptr,
     .viewMask = 0,
     .colorAttachmentCount = 1,
-    .pColorAttachmentFormats = &colorFormat,
-    .depthAttachmentFormat = depthFormat,
+    .pColorAttachmentFormats = &desc.colorFormat,
+    .depthAttachmentFormat = desc.depthFormat,
     .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
   };
 
@@ -180,7 +152,8 @@ void VulkanGraphicsPipeline2::allocateDescriptorSets(u32 numSubmeshes, std::vect
 
 void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, std::vector<std::vector<VkDescriptorSet>>& descriptorSets) {
   u32 numSubmeshes = (u32)descriptorSets[0].size();
-  u32 descriptorWriteCount = m_numImages * numSubmeshes * binding::BindingCount;
+  u32 actualBindings = Binding_BindingCount - 1; // Only one texture at the binding
+  u32 descriptorWriteCount = m_numImages * numSubmeshes * actualBindings;
   u32 wdsIdx = 0;
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSet(descriptorWriteCount);
@@ -225,7 +198,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
         .dstSet = dstSet,
-        .dstBinding = binding::VB,
+        .dstBinding = Binding_VB,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -238,7 +211,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
         .dstSet = dstSet,
-        .dstBinding = binding::IB,
+        .dstBinding = Binding_IB,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -251,7 +224,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
         .dstSet = dstSet,
-        .dstBinding = binding::Uniform,
+        .dstBinding = Binding_Uniform,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -264,7 +237,7 @@ void VulkanGraphicsPipeline2::updateDescriptorSets(const ModelDesc& modelDesc, s
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
         .dstSet = dstSet,
-        .dstBinding = binding::Texture,
+        .dstBinding = Binding_Texture2D,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -283,33 +256,13 @@ VkPipelineLayout VulkanGraphicsPipeline2::getPipelineLayout() const {
 }
 
 void VulkanGraphicsPipeline2::createDescriptorPool(u32 maxSets) {
-  // WARNING: All of [.descriptorCount] probably should rely on number of images
-  std::array<VkDescriptorPoolSize, 4> poolSizes = {
-    VkDescriptorPoolSize{
-      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = maxSets,
-    },
-    VkDescriptorPoolSize{
-      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = maxSets,
-    },
-    VkDescriptorPoolSize{
-      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = maxSets,
-    },
-    VkDescriptorPoolSize{
-      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = maxSets,
-    },
-  };
-
   VkDescriptorPoolCreateInfo poolInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
     .maxSets = maxSets,
-    .poolSizeCount = poolSizes.size(),
-    .pPoolSizes = poolSizes.data(),
+    .poolSizeCount = static_cast<u32>(m_descriptorPoolSizes.size()),
+    .pPoolSizes = m_descriptorPoolSizes.data(),
   };
 
   VkResult res = vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool);
@@ -338,45 +291,83 @@ void VulkanGraphicsPipeline2::allocateDescriptorSetsInternal(u32 numSubmeshes, s
   }
 }
 
-void VulkanGraphicsPipeline2::createDescriptorSetLayout(bool isVB, bool isIB, bool isTex, bool isUniform) {
+void VulkanGraphicsPipeline2::createDescriptorSetLayout(const PipelineDescriptor& desc) {
   std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
-  layoutBindings.reserve(isVB + isIB + isTex + isUniform);
 
-  if (isVB)
+  if (desc.isVB) {
+    m_descriptorPoolSizes.push_back({
+      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = m_numImages,
+    });
+
     layoutBindings.push_back({
-      .binding = binding::VB,
+      .binding = Binding_VB,
       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
       .descriptorCount = 1,
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
       .pImmutableSamplers = nullptr,
     });
+  }
 
-  if (isIB)
+  if (desc.isIB) {
+    m_descriptorPoolSizes.push_back({
+      .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = m_numImages,
+    });
+
     layoutBindings.push_back({
-      .binding = binding::IB,
+      .binding = Binding_IB,
       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
       .descriptorCount = 1,
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
       .pImmutableSamplers = nullptr,
     });
+  }
 
-  if (isTex)
-    layoutBindings.push_back({
-      .binding = binding::Texture,
-      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      .pImmutableSamplers = nullptr,
+  if (desc.isUniform) {
+    m_descriptorPoolSizes.push_back({
+      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = m_numImages,
     });
 
-  if (isUniform)
     layoutBindings.push_back({
-      .binding = binding::Uniform,
+      .binding = Binding_Uniform,
       .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
       .descriptorCount = 1,
       .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
       .pImmutableSamplers = nullptr,
     });
+  }
+
+  if (desc.isTex2D) {
+    m_descriptorPoolSizes.push_back({
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = m_numImages,
+    });
+
+    layoutBindings.push_back({
+      .binding = Binding_Texture2D,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .pImmutableSamplers = nullptr,
+    });
+  }
+
+  if (desc.isTexCubemap) {
+    m_descriptorPoolSizes.push_back({
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = m_numImages,
+    });
+
+    layoutBindings.push_back({
+      .binding = Binding_TextureCubemap,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .pImmutableSamplers = nullptr,
+    });
+  }
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,

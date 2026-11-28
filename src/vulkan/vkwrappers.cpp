@@ -37,14 +37,15 @@ VkImageView createImageView(
   VkDevice device,
   VkImage image,
   VkFormat format,
-  VkImageAspectFlags aspectFlags
+  VkImageAspectFlags aspectFlags,
+  bool isCubemap
 ) {
   VkImageViewCreateInfo viewCreateInfo{
     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
     .image = image,
-    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+    .viewType = isCubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
     .format = format,
     .components = {
       .r = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -57,7 +58,7 @@ VkImageView createImageView(
       .baseMipLevel = 0,
       .levelCount = 1,
       .baseArrayLayer = 0,
-      .layerCount = 1,
+      .layerCount = isCubemap ? 6u : 1u,
     },
   };
 
@@ -106,6 +107,7 @@ void imageMemBarrier(
   VkCommandBuffer cmdBuf,
   VkImage image,
   VkFormat format,
+  u32 layerCount,
   VkImageLayout oldLayout,
   VkImageLayout newLayout
 ) {
@@ -124,7 +126,7 @@ void imageMemBarrier(
       .baseMipLevel = 0,
       .levelCount = 1,
       .baseArrayLayer = 0,
-      .layerCount = 1,
+      .layerCount = layerCount,
     },
   };
 

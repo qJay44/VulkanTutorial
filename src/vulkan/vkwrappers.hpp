@@ -10,6 +10,7 @@ void imageMemBarrier(
   VkCommandBuffer cmdBuf,
   VkImage image,
   VkFormat format,
+  u32 layerCount,
   VkImageLayout oldLayout,
   VkImageLayout newLayout
 );
@@ -18,7 +19,8 @@ VkImageView createImageView(
   VkDevice device,
   VkImage image,
   VkFormat format,
-  VkImageAspectFlags aspectFlags
+  VkImageAspectFlags aspectFlags,
+  bool isCubemap
 );
 
 VkSampler createTextureSampler(VkDevice device, VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode addressMode);

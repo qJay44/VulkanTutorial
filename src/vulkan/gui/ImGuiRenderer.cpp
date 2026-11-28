@@ -98,6 +98,7 @@ VkCommandBuffer ImGuiRenderer::prepareCommandBuffer(u32 imageIndex) {
     cmdBuf,
     m_core->getImage(imageIndex),
     m_core->getSwapchainSurfaceFormat().format,
+    1,
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
   );

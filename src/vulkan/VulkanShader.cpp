@@ -147,5 +147,9 @@ void VulkanShader::createShaderModuleFromText(VkDevice& device, const fspath& pa
   glslang_finalize_process();
 }
 
+void VulkanShader::destroy(VkDevice device) {
+  vkDestroyShaderModule(device, shaderModule, nullptr);
+}
+
 } // namespace lve
 

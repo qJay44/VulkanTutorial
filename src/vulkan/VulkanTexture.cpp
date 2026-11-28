@@ -9,7 +9,7 @@ VulkanTexture::VulkanTexture(class VulkanCore *core) : m_core(core) {}
 
 void VulkanTexture::load(const fspath& path) {
   assert(m_core);
-  m_core->createTexture(path, this);
+  m_core->createTexture2D(path, this);
 }
 
 void VulkanTexture::load(u32 bufferSize, void* data) {
@@ -17,13 +17,20 @@ void VulkanTexture::load(u32 bufferSize, void* data) {
 
   int imgWidth, imgHeight, imgChannels;
   void* pixels = stbi_load_from_memory((const stbi_uc*)data, bufferSize, &imgWidth, &imgHeight, &imgChannels, 0);
+
+  VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
   VkExtent3D imageExtent{
     .width = static_cast<u32>(imgWidth),
     .height = static_cast<u32>(imgHeight),
     .depth = 1
   };
 
-  m_core->createTextureFromData(pixels, imageExtent, this);
+  m_core->createTextureFromData(pixels, format, imageExtent, this, false);
+}
+
+void VulkanTexture::loadEctCubemap(const fspath& path) {
+  assert(m_core);
+  m_core->createTextureCubemap(path, this);
 }
 
 void VulkanTexture::destroy(VkDevice device) {

@@ -1,11 +1,12 @@
 #pragma once
 
+#include "../Camera.hpp"
 #include "VulkanCore.hpp"
+#include "VulkanGraphicsPipeline2.hpp"
 #include "VulkanModel.hpp"
 #include "VulkanQueue.hpp"
 #include "VulkanShader.hpp"
-#include "VulkanGraphicsPipeline2.hpp"
-#include "../Camera.hpp"
+#include "VulkanSkybox.hpp"
 #include "gui/ImGuiRenderer.hpp"
 
 namespace lve {
@@ -31,6 +32,7 @@ private:
   VulkanShader m_vs;
   VulkanShader m_fs;
   VulkanGraphicsPipeline2* m_pipeline = nullptr;
+  VulkanSkybox m_skybox;
   struct {
     std::vector<VkCommandBuffer> withGui;
     std::vector<VkCommandBuffer> withoutGui;
@@ -55,6 +57,7 @@ private:
   void loadTexture();
 
   void createPipeline(GLFWwindow* window);
+  void createSkybox(const fspath& path);
 
   void allocateCommandBuffers();
   void recordCommandBuffersGeneral();
@@ -67,6 +70,7 @@ private:
   void beginRendering(VkCommandBuffer cmdBuf, u32 imageIndex);
   void endRendering(VkCommandBuffer cmdBuf);
 
+  void destroySkybox();
   void destroyPipeline();
   void destroyModel();
   void destroyShaders();

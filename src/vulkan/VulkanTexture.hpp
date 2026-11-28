@@ -13,6 +13,7 @@ struct VulkanTexture {
 
   void load(const fspath& path);
   void load(u32 bufferSize, void* data);
+  void loadEctCubemap(const fspath& path);
   void destroy(VkDevice device);
 };
 
